@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Asset Vault</string>
+    <string name="add_asset">Add Asset</string>
+    <string name="add_photo">Add photo</string>
+    <string name="select_file">Select File</string>
+    <string name="pick_asset_description">Select a photo to protect.\nYour file stays on your device.</string>
+    <string name="my_vault">My Vault</string>
+    <string name="protected_assets">Protected Assets</string>
+    <string name="empty_vault">No assets protected yet.\nTap + to add your first asset.</string>
+    <string name="asset_details">Asset Details</string>
+    <string name="mint_protect">Mint / Protect</string>
+    <string name="verify">Verify</string>
+    <string name="back">Back</string>
+    <string name="thumbnail">Thumbnail</string>
+    <string name="accessibility_service_description">Monitors screen to detect and protect sensitive content.</string>
+</resources>
