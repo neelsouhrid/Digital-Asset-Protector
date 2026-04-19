@@ -95,6 +95,22 @@ class AssetPickerFragment : Fragment() {
     private fun processSelectedAsset(uri: Uri) {
         viewLifecycleOwner.lifecycleScope.launch {
             try {
+                val db = AppDatabase.getInstance(requireContext())
+                
+                // Check if already processed (Rule 6)
+                val existing = db.signatureDao().getByUri(uri.toString())
+                if (existing != null) {
+                    withContext(Dispatchers.Main) {
+                        binding.progressBar.visibility = View.GONE
+                        binding.tvStatus.text = "Asset already exists!"
+                        Toast.makeText(requireContext(), "Asset already in vault", Toast.LENGTH_SHORT).show()
+                        binding.root.postDelayed({
+                            parentFragmentManager.popBackStack()
+                        }, 1500)
+                    }
+                    return@launch
+                }
+
                 // Read file bytes from URI
                 val bytes = withContext(Dispatchers.IO) {
                     requireContext().contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -106,12 +122,14 @@ class AssetPickerFragment : Fragment() {
 
                 Log.d(TAG, "File size: ${bytes.size} bytes")
 
-                // Generate hex vector - Module 2
-                val hexVector = VectorEngine.generateHexVector(bytes)
+                // Generate hex vector & pHash on background thread - Module 2
+                val (hexVector, pHash) = withContext(Dispatchers.Default) {
+                    val hex = VectorEngine.generateHexVector(bytes)
+                    val p = PHashGenerator.generatePHash(bytes)
+                    Pair(hex, p)
+                }
+                
                 Log.d(TAG, "Generated hex vector (first 64 chars): ${hexVector.take(64)}...")
-
-                // Generate pHash - Module 2
-                val pHash = PHashGenerator.generatePHash(bytes)
                 Log.d(TAG, "Generated pHash: $pHash")
 
                 // Save to database - Module 3

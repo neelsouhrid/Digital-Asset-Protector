@@ -16,6 +16,6 @@ data class SignatureEntity(
     val hexVector: String,     // 512-dim hex vector from VectorEngine
     val pHash: String,        // Perceptual hash from PHashGenerator
     val timestamp: Long,      // When the asset was added
-    val blockchainTxId: String?,  // Polygon transaction ID (null until minted)
-    val status: String        // "pending", "protected", "failed"
+    var blockchainTxId: String?,  // Polygon transaction ID (null until minted)
+    var status: String        // "pending", "protected", "failed"
 )
