@@ -1,0 +1,33 @@
+# Environment — NEVER commit secrets
+.env
+.env.local
+.env.*.local
+
+# Hardhat build artifacts
+artifacts/
+cache/
+typechain/
+typechain-types/
+
+# Deployment records (contain addresses — OK to commit, optional)
+# deployments/
+
+# Dependencies
+node_modules/
+
+# Coverage reports
+coverage/
+coverage.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log
+npm-debug.log*
