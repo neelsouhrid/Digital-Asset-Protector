@@ -74,6 +74,30 @@ async function main() {
   const isLocked = await contract.locked(identity.tokenId);
   log(`   Soulbound : ${isLocked ? "LOCKED ✅" : "NOT LOCKED ❌"}`);
 
+  // Also set them as a verified creator so they can register assets
+  const verifyTx = await contract.setVerifiedCreator(deployerAddress, true);
+  await verifyTx.wait(1);
+  log(`   Verified Creator: ✅`);
+
+  sep();
+
+  // ── Deploy ProvenanceRegistry ─────────────────────────────────────────────
+  log("📦 Deploying ProvenanceRegistry...");
+  const ProvFactory  = await ethers.getContractFactory("ProvenanceRegistry");
+  const provContract = await ProvFactory.deploy(contractAddress, deployerAddress);
+  await provContract.waitForDeployment();
+
+  const provAddress = await provContract.getAddress();
+  const provDeployTx = provContract.deploymentTransaction();
+  log(`✅ ProvenanceRegistry Deployed at : ${provAddress}`);
+  log(`   Tx Hash     : ${provDeployTx.hash}`);
+
+  if (networkName !== "hardhat" && networkName !== "localhost") {
+    log("Waiting for 5 block confirmations...");
+    await provDeployTx.wait(5);
+    log("✅ Confirmed.");
+  }
+
   sep();
 
   // ── Polygonscan verification ──────────────────────────────────────────────
@@ -112,30 +136,26 @@ async function main() {
     contractName:   "IdentityRegistry",
     network:        networkName,
     chainId:        chainId.toString(),
-    contractAddress,
+    identityRegistryAddress: contractAddress,
+    provenanceRegistryAddress: provAddress,
     deployerAddress,
-    txHash:         deployTx.hash,
+    txHashIdentity: deployTx.hash,
+    txHashProvenance: provDeployTx.hash,
     deployedAt:     new Date().toISOString(),
-    explorerUrl:
-      networkName === "amoy"
-        ? `https://amoy.polygonscan.com/address/${contractAddress}`
-        : networkName === "polygon"
-        ? `https://polygonscan.com/address/${contractAddress}`
-        : "N/A (local)",
   };
 
   const logFile = path.join(
     DEPLOYMENT_LOG_PATH,
-    `${networkName}-IdentityRegistry-${Date.now()}.json`
+    `${networkName}-Contracts-${Date.now()}.json`
   );
   fs.writeFileSync(logFile, JSON.stringify(record, null, 2));
   log(`📄 Record saved → ${logFile}`);
 
   sep();
   log("🎉 Deployment complete!");
-  log(`   Address  : ${contractAddress}`);
+  log(`   IdentityRegistry Address   : ${contractAddress}`);
+  log(`   ProvenanceRegistry Address : ${provAddress}`);
   if (networkName === "amoy") {
-    log(`   Explorer : https://amoy.polygonscan.com/address/${contractAddress}`);
     log(`   Faucet   : https://faucet.polygon.technology/`);
   }
   sep();

@@ -32,6 +32,7 @@ contract ProvenanceRegistry is Ownable, ReentrancyGuard, Pausable {
     event AssetRegistered(bytes32 indexed signatureHash, address indexed owner, uint256 timestamp);
     event Challenge(bytes32 indexed signatureHash, address indexed reporter, string reason);
     event AssetProtectionStatusChanged(bytes32 indexed signatureHash, bool isProtected);
+    event AssetTransferred(bytes32 indexed signatureHash, address indexed oldOwner, address indexed newOwner);
 
     error NotVerifiedCreator();
     error AssetAlreadyRegistered();
@@ -104,6 +105,28 @@ contract ProvenanceRegistry is Ownable, ReentrancyGuard, Pausable {
         
         assets[_signatureHash].isProtected = _isProtected;
         emit AssetProtectionStatusChanged(_signatureHash, _isProtected);
+    }
+
+    /**
+     * @notice Transfers ownership of a registered asset to a new owner
+     * @param _signatureHash The signature hash of the asset
+     * @param _newOwner The address of the new owner
+     */
+    function transferAsset(bytes32 _signatureHash, address _newOwner) external whenNotPaused {
+        if (assets[_signatureHash].timestamp == 0) {
+            revert AssetNotRegistered();
+        }
+        if (msg.sender != assets[_signatureHash].owner) {
+            revert NotAssetOwner();
+        }
+        if (_newOwner == address(0)) {
+            revert InvalidRegistryAddress();
+        }
+
+        address oldOwner = assets[_signatureHash].owner;
+        assets[_signatureHash].owner = _newOwner;
+
+        emit AssetTransferred(_signatureHash, oldOwner, _newOwner);
     }
 
     /**
