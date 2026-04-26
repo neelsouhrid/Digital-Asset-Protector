@@ -1,130 +1,189 @@
 package com.assetvault.network
 
 import android.util.Log
+import com.assetvault.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.web3j.abi.FunctionEncoder
+import org.web3j.abi.FunctionReturnDecoder
+import org.web3j.abi.TypeReference
+import org.web3j.abi.datatypes.Address
+import org.web3j.abi.datatypes.Bool
+import org.web3j.abi.datatypes.Function
+import org.web3j.abi.datatypes.generated.Bytes32
+import org.web3j.abi.datatypes.generated.Uint256
 import org.web3j.crypto.Credentials
-import org.web3j.crypto.Hash
+import org.web3j.crypto.ECKeyPair
+import org.web3j.crypto.Keys
+import org.web3j.crypto.RawTransaction
+import org.web3j.crypto.TransactionEncoder
 import org.web3j.protocol.Web3j
+import org.web3j.protocol.core.DefaultBlockParameterName
+import org.web3j.protocol.core.methods.request.Transaction
 import org.web3j.protocol.http.HttpService
-import org.web3j.tx.gas.DefaultGasProvider
+import org.web3j.utils.Numeric
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.math.BigInteger
+import java.security.Security
 
 /**
  * BlockchainManager - Module 4
- * Connects to Polygon/Ethereum nodes via Web3j.
- * Mints ownership of hex signatures on Polygon.
+ * Real Web3j integration with the ProvenanceRegistry contract on Polygon Amoy.
  */
 object BlockchainManager {
 
     private const val TAG = "BlockchainManager"
 
-    // Polygon Mainnet RPC (use BuildConfig in production)
-    private const val POLYGON_RPC = "https://polygon-rpc.com"
-
-    // Demo mode - generates mock transaction ID
-    private var isDemoMode = true
-
     private var web3j: Web3j? = null
     private var credentials: Credentials? = null
 
-    /**
-     * Initialize Web3j connection.
-     */
-    fun initialize(privateKey: String?) {
-        if (privateKey.isNullOrEmpty()) {
-            Log.w(TAG, "No private key provided, using demo mode")
-            isDemoMode = true
-            return
-        }
+    init {
+        setupBouncyCastle()
+    }
 
+    private fun setupBouncyCastle() {
+        val provider = Security.getProvider(BouncyCastleProvider.PROVIDER_NAME)
+        if (provider == null || provider.javaClass.name != BouncyCastleProvider::class.java.name) {
+            Security.removeProvider(BouncyCastleProvider.PROVIDER_NAME)
+            Security.insertProviderAt(BouncyCastleProvider(), 1)
+        }
+    }
+
+    /**
+     * Initialize Web3j connection with a private key hex string.
+     */
+    fun initialize(privateKeyHex: String) {
         try {
-            web3j = Web3j.build(HttpService(POLYGON_RPC))
-            credentials = Credentials.create(privateKey)
-            isDemoMode = false
-            Log.d(TAG, "Blockchain manager initialized with real connection")
+            web3j = Web3j.build(HttpService(Constants.POLYGON_RPC_URL))
+            credentials = Credentials.create(privateKeyHex)
+            Log.d(TAG, "Initialized — wallet: ${credentials?.address}")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize Web3j", e)
-            isDemoMode = true
+            throw e
         }
     }
 
     /**
-     * Mint an asset on the blockchain.
-     * Returns the transaction ID.
+     * Generate a new wallet keypair.
+     * Returns the private key as a hex string (no 0x prefix).
      */
-    suspend fun mintAsset(hexVector: String, pHash: String): String = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Minting asset with hexVector: ${hexVector.take(32)}...")
-
-        if (isDemoMode) {
-            // Demo mode - generate mock transaction
-            val mockTxId = generateMockTransaction(hexVector, pHash)
-            Log.d(TAG, "Demo mode - Mock TX: $mockTxId")
-            return@withContext mockTxId
-        }
-
-        // Real implementation would:
-        // 1. Create a smart contract transaction
-        // 2. Sign with credentials
-        // 3. Send to Polygon
-        // 4. Return transaction hash
-
-        try {
-            val txHash = submitRealTransaction(hexVector, pHash)
-            Log.d(TAG, "Real transaction submitted: $txHash")
-            txHash
-        } catch (e: Exception) {
-            Log.e(TAG, "Transaction failed, falling back to demo", e)
-            generateMockTransaction(hexVector, pHash)
-        }
-    }
-
-    private fun generateMockTransaction(hexVector: String, pHash: String): String {
-        // Generate deterministic mock TX based on asset data
-        val data = "$hexVector:$pHash:${System.currentTimeMillis()}"
-        val hash = Hash.sha3(data)
-        return "0x${hash.take(64)}"
-    }
-
-    private fun submitRealTransaction(hexVector: String, pHash: String): String {
-        // In production, this would interact with a smart contract
-        // Example with Web3j:
-        //
-        // val contract = AssetRegistry.load(CONTRACT_ADDRESS, web3j, credentials, DefaultGasProvider())
-        // val txReceipt = contract.registerAsset(hexVector, pHash).send()
-        // return txReceipt.transactionHash
-
-        throw NotImplementedError("Real blockchain integration requires smart contract deployment")
+    fun generateWallet(): String {
+        val keyPair: ECKeyPair = Keys.createEcKeyPair()
+        val privateKeyHex = Numeric.toHexStringNoPrefixZeroPadded(keyPair.privateKey, 64)
+        Log.d(TAG, "Generated new wallet: 0x${Keys.getAddress(keyPair)}")
+        return privateKeyHex
     }
 
     /**
-     * Verify an asset on the blockchain.
+     * Register an asset's pHash on the blockchain.
+     * Calls: registerAsset(bytes32 _signatureHash)
+     * Returns the transaction hash.
      */
-    suspend fun verifyAsset(txId: String): Boolean = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Verifying asset with txId: $txId")
+    suspend fun registerAsset(pHash: String): String = withContext(Dispatchers.IO) {
+        val w3 = web3j ?: throw IllegalStateException("BlockchainManager not initialized")
+        val creds = credentials ?: throw IllegalStateException("No credentials loaded")
 
-        if (isDemoMode) {
-            return@withContext txId.startsWith("0x")
+        Log.d(TAG, "Registering on-chain: pHash=${pHash.take(16)}...")
+
+        // Convert pHash hex to bytes32 (right-pad to 32 bytes = 64 hex chars)
+        val paddedHash = pHash.padEnd(64, '0')
+        val signatureBytes = Numeric.hexStringToByteArray(paddedHash)
+        val bytes32Value = Bytes32(signatureBytes)
+
+        // Encode: registerAsset(bytes32)
+        val function = Function(
+            "registerAsset",
+            listOf(bytes32Value),
+            emptyList()
+        )
+        val encodedFunction = FunctionEncoder.encode(function)
+
+        // Nonce
+        val nonce = w3.ethGetTransactionCount(
+            creds.address, DefaultBlockParameterName.LATEST
+        ).send().transactionCount
+
+        // Gas price
+        val gasPrice = w3.ethGasPrice().send().gasPrice
+
+        // Build raw transaction
+        val rawTransaction = RawTransaction.createTransaction(
+            nonce,
+            gasPrice,
+            BigInteger.valueOf(200_000), // gas limit
+            Constants.CONTRACT_ADDRESS,
+            encodedFunction
+        )
+
+        // Sign with EIP-155 (chain ID)
+        val signedMessage = TransactionEncoder.signMessage(
+            rawTransaction, Constants.CHAIN_ID, creds
+        )
+        val hexValue = Numeric.toHexString(signedMessage)
+
+        // Send
+        val response = w3.ethSendRawTransaction(hexValue).send()
+
+        if (response.hasError()) {
+            throw Exception("Tx failed: ${response.error.message}")
         }
 
-        try {
-            val receipt = web3j?.ethGetTransactionReceipt(txId)?.send()
-            receipt?.transactionReceipt?.isPresent == true
-        } catch (e: Exception) {
-            Log.e(TAG, "Verification failed", e)
+        val txHash = response.transactionHash
+        Log.d(TAG, "Transaction sent: $txHash")
+        txHash
+    }
+
+    /**
+     * Check if an asset exists on-chain.
+     * Calls: assets(bytes32) → returns (bytes32, address, uint256, bool)
+     */
+    suspend fun checkAsset(pHash: String): Boolean = withContext(Dispatchers.IO) {
+        val w3 = web3j ?: throw IllegalStateException("BlockchainManager not initialized")
+        val creds = credentials ?: throw IllegalStateException("No credentials loaded")
+
+        val paddedHash = pHash.padEnd(64, '0')
+        val signatureBytes = Numeric.hexStringToByteArray(paddedHash)
+        val bytes32Value = Bytes32(signatureBytes)
+
+        val function = Function(
+            "assets",
+            listOf(bytes32Value),
+            listOf(
+                object : TypeReference<Bytes32>() {},
+                object : TypeReference<Address>() {},
+                object : TypeReference<Uint256>() {},
+                object : TypeReference<Bool>() {}
+            )
+        )
+        val encodedFunction = FunctionEncoder.encode(function)
+
+        val ethCallResponse = w3.ethCall(
+            Transaction.createEthCallTransaction(
+                creds.address,
+                Constants.CONTRACT_ADDRESS,
+                encodedFunction
+            ),
+            DefaultBlockParameterName.LATEST
+        ).send()
+
+        val results = FunctionReturnDecoder.decode(
+            ethCallResponse.value, function.outputParameters
+        )
+
+        if (results.size >= 4) {
+            results[3].value as Boolean
+        } else {
             false
         }
     }
 
     /**
-     * Get the current user's wallet address.
+     * Get the current wallet address.
      */
-    fun getWalletAddress(): String? {
-        return credentials?.address
-    }
+    fun getWalletAddress(): String? = credentials?.address
 
     /**
-     * Close Web3j connection.
+     * Shutdown Web3j connection.
      */
     fun shutdown() {
         web3j?.shutdown()

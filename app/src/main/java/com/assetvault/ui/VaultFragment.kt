@@ -1,6 +1,7 @@
 package com.assetvault.ui
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,16 +11,19 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import com.assetvault.data.AppDatabase
 import com.assetvault.data.SignatureEntity
 import com.assetvault.databinding.FragmentVaultBinding
+import com.assetvault.network.CloudApiClient
 import kotlinx.coroutines.launch
 
 /**
  * VaultFragment - Module 3
  * Displays list of user-added protected assets with status badges.
+ * Syncs enforcement status for sighting items on load.
  */
 class VaultFragment : Fragment() {
 
     private var _binding: FragmentVaultBinding? = null
     private val binding get() = _binding!!
+    private val TAG = "VaultFragment"
 
     private lateinit var adapter: AssetListAdapter
 
@@ -69,14 +73,46 @@ class VaultFragment : Fragment() {
             } else {
                 binding.tvEmptyState.visibility = View.GONE
                 binding.recyclerViewAssets.visibility = View.VISIBLE
-                adapter.submitList(assets)
+
+                // Sync enforcement status for sighting items before displaying
+                syncEnforcementStatus(assets, db)
+
+                // Reload after sync to get updated isEnforced values
+                val refreshed = db.signatureDao().getAll()
+                adapter.submitList(refreshed)
+            }
+        }
+    }
+
+    /**
+     * For each sighting item that isn't already enforced,
+     * check the API to see if the owner has activated enforcement.
+     * Update local DB accordingly so the adapter can blur enforced sightings.
+     */
+    private suspend fun syncEnforcementStatus(
+        assets: List<SignatureEntity>,
+        db: AppDatabase
+    ) {
+        val sightings = assets.filter { it.status == "SIGHTING" && !it.isEnforced }
+
+        for (sighting in sightings) {
+            try {
+                val enforcement = CloudApiClient.checkEnforcement(sighting.pHash)
+                if (enforcement.isEnforced) {
+                    sighting.isEnforced = true
+                    db.signatureDao().update(sighting)
+                    Log.d(TAG, "Enforcement synced for pHash: ${sighting.pHash.take(16)}")
+                }
+            } catch (e: Exception) {
+                // Silently fail — enforcement check is best-effort
+                Log.w(TAG, "Failed to check enforcement for ${sighting.pHash.take(16)}", e)
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        loadAssets() // Refresh list when returning to this fragment
+        loadAssets() // Refresh list + enforcement status when returning
     }
 
     override fun onDestroyView() {

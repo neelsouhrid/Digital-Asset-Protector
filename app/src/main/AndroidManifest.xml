@@ -7,6 +7,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- Location for sighting tracking -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Library mode (Option B) — READ_MEDIA_IMAGES for Android 13+ -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
     <!-- Accessibility Service for Analog Hole detection -->
     <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE"
         tools:ignore="ProtectedPermissions" />
@@ -21,9 +30,9 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="33">
 
-        <!-- Main Activity -->
+        <!-- Google Sign-In Activity (new launcher) -->
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.SignInActivity"
             android:exported="true"
             android:theme="@style/Theme.AssetVault">
             <intent-filter>
@@ -31,6 +40,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Main Activity (no longer the launcher) -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AssetVault" />
 
         <!-- Asset Detail Activity -->
         <activity

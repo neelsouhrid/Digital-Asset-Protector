@@ -5,17 +5,23 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.assetvault.R
 import com.assetvault.data.AppDatabase
+import com.assetvault.data.SecurePreferences
 import com.assetvault.databinding.FragmentAssetDetailBinding
-import com.assetvault.network.BlockchainManager
 import com.assetvault.network.CloudApiClient
+import com.assetvault.util.ImageBlurUtil
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * AssetDetailFragment - Module 4 & 5
- * Shows asset details and allows minting on blockchain.
+ * Shows asset details, Protect Asset button for owners,
+ * and blur enforcement for sighting devices.
  */
 class AssetDetailFragment : Fragment() {
 
@@ -57,8 +63,8 @@ class AssetDetailFragment : Fragment() {
             parentFragmentManager.popBackStack()
         }
 
-        binding.btnMint.setOnClickListener {
-            mintAsset()
+        binding.btnProtect.setOnClickListener {
+            enforceProtection()
         }
 
         binding.btnVerify.setOnClickListener {
@@ -73,63 +79,209 @@ class AssetDetailFragment : Fragment() {
             val db = AppDatabase.getInstance(requireContext())
             val asset = db.signatureDao().getById(assetId)
 
-            if (asset != null) {
-                binding.tvAssetUri.text = "URI: ${asset.uri}"
-                binding.tvHexVector.text = "Hex: ${asset.hexVector.take(100)}..."
-                binding.tvPHash.text = "pHash: ${asset.pHash}"
-                binding.tvTimestamp.text = "Added: ${formatTimestamp(asset.timestamp)}"
-                binding.tvStatus.text = "Status: ${asset.status.uppercase()}"
-
-                // Show blockchain info if minted
-                if (asset.blockchainTxId != null) {
-                    binding.tvBlockchainTx.text = "Tx: ${asset.blockchainTxId}"
-                    binding.tvBlockchainTx.visibility = View.VISIBLE
-                    binding.btnMint.isEnabled = false
-                    binding.btnMint.text = "Already Minted"
-                } else {
-                    binding.tvBlockchainTx.visibility = View.GONE
-                }
-            } else {
+            if (asset == null) {
                 Toast.makeText(requireContext(), "Asset not found", Toast.LENGTH_SHORT).show()
                 parentFragmentManager.popBackStack()
+                return@launch
+            }
+
+            val prefs = SecurePreferences.getInstance(requireContext())
+            val currentUser = prefs.getOwnerId()
+            val isOwner = asset.ownerEmail == currentUser ||
+                          asset.status == "PROTECTED"
+
+            // Load image preview
+            withContext(Dispatchers.Default) {
+                val bitmap = ImageBlurUtil.loadScaledBitmap(requireContext(), asset.uri)
+                if (bitmap != null) {
+                    withContext(Dispatchers.Main) {
+                        if (asset.status == "SIGHTING" && asset.isEnforced) {
+                            // Show blurred image for enforced sightings
+                            val blurred = ImageBlurUtil.blurBitmap(bitmap, 25)
+                            binding.ivPreview.setImageBitmap(blurred)
+                            binding.layoutBlurOverlay.visibility = View.VISIBLE
+                        } else {
+                            binding.ivPreview.setImageBitmap(bitmap)
+                            binding.layoutBlurOverlay.visibility = View.GONE
+                        }
+                    }
+                }
+            }
+
+            // Fill info fields
+            binding.tvAssetUri.text = "File: ${asset.uri.substringAfterLast("/")}"
+            binding.tvHexVector.text = "Vector: ${asset.hexVector.take(32)}..."
+            binding.tvPHash.text = "pHash: ${asset.pHash}"
+            binding.tvTimestamp.text = "Added: ${formatTimestamp(asset.timestamp)}"
+
+            // Status badge
+            when (asset.status) {
+                "PROTECTED" -> {
+                    binding.tvStatus.text = "Status: ✅ PROTECTED"
+                    binding.tvStatus.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.status_protected)
+                    )
+                }
+                "SIGHTING" -> {
+                    val simText = asset.similarity?.let { "%.1f%%".format(it) } ?: "?"
+                    binding.tvStatus.text = "Status: ⚠️ SIGHTING ($simText match)"
+                    binding.tvStatus.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.status_sighting)
+                    )
+                }
+                else -> {
+                    binding.tvStatus.text = "Status: ${asset.status}"
+                    binding.tvStatus.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.status_pending)
+                    )
+                }
+            }
+
+            // Blockchain tx
+            if (asset.blockchainTxId != null) {
+                binding.tvBlockchainTx.text = "Tx: ${asset.blockchainTxId}"
+                binding.tvBlockchainTx.visibility = View.VISIBLE
+            } else {
+                binding.tvBlockchainTx.visibility = View.GONE
+            }
+
+            // ── Protect button visibility ───────────────────────
+            if (isOwner && asset.status == "PROTECTED") {
+                // Owner sees Protect button
+                binding.btnProtect.visibility = View.VISIBLE
+
+                if (asset.isEnforced) {
+                    binding.btnProtect.isEnabled = false
+                    binding.btnProtect.text = "Already Protected"
+                    binding.tvEnforcementStatus.visibility = View.VISIBLE
+                    binding.tvEnforcementStatus.text = getString(R.string.enforcement_active)
+                    binding.tvEnforcementStatus.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.status_protected)
+                    )
+                } else {
+                    binding.btnProtect.isEnabled = true
+                    binding.tvEnforcementStatus.visibility = View.VISIBLE
+                    binding.tvEnforcementStatus.text = getString(R.string.enforcement_inactive)
+                    binding.tvEnforcementStatus.setTextColor(
+                        ContextCompat.getColor(requireContext(), R.color.text_secondary)
+                    )
+                }
+            } else {
+                // Sighting or non-owner — hide protect button
+                binding.btnProtect.visibility = View.GONE
+
+                if (asset.status == "SIGHTING") {
+                    // Check enforcement status from API
+                    checkAndDisplayEnforcement(asset.pHash)
+                }
             }
         }
     }
 
-    private fun mintAsset() {
+    /**
+     * Owner presses "Protect Asset" — calls the API to enforce protection.
+     */
+    private fun enforceProtection() {
         viewLifecycleOwner.lifecycleScope.launch {
             binding.progressBar.visibility = View.VISIBLE
-            binding.tvStatus.text = "Minting..."
+            binding.btnProtect.isEnabled = false
 
             try {
                 val db = AppDatabase.getInstance(requireContext())
                 val asset = db.signatureDao().getById(assetId)
+                    ?: throw IllegalStateException("Asset not found")
 
-                if (asset == null) {
-                    throw IllegalStateException("Asset not found")
+                val prefs = SecurePreferences.getInstance(requireContext())
+                val ownerId = prefs.getOwnerId()
+
+                // Call API to enforce protection
+                val result = CloudApiClient.protectAsset(asset.pHash, ownerId)
+
+                if (result.success) {
+                    // Update local DB
+                    asset.isEnforced = true
+                    db.signatureDao().update(asset)
+
+                    withContext(Dispatchers.Main) {
+                        binding.progressBar.visibility = View.GONE
+                        binding.btnProtect.isEnabled = false
+                        binding.btnProtect.text = "Already Protected"
+                        binding.tvEnforcementStatus.visibility = View.VISIBLE
+                        binding.tvEnforcementStatus.text = getString(R.string.enforcement_active)
+                        binding.tvEnforcementStatus.setTextColor(
+                            ContextCompat.getColor(requireContext(), R.color.status_protected)
+                        )
+
+                        Toast.makeText(
+                            requireContext(),
+                            "Protection enforced! Sighting devices will blur this image.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                } else {
+                    throw Exception("Server returned success=false")
                 }
 
-                // Mint on blockchain - Module 4
-                val txId = BlockchainManager.mintAsset(asset.hexVector, asset.pHash)
-
-                // Update database with tx ID
-                asset.blockchainTxId = txId
-                asset.status = "protected"
-                db.signatureDao().update(asset)
-
-                binding.progressBar.visibility = View.GONE
-                binding.tvBlockchainTx.text = "Tx: $txId"
-                binding.tvBlockchainTx.visibility = View.VISIBLE
-                binding.tvStatus.text = "Status: PROTECTED"
-                binding.btnMint.isEnabled = false
-                binding.btnMint.text = "Already Minted"
-
-                Toast.makeText(requireContext(), "Asset minted successfully!", Toast.LENGTH_SHORT).show()
-
             } catch (e: Exception) {
-                binding.progressBar.visibility = View.GONE
-                binding.tvStatus.text = "Minting failed: ${e.message}"
-                Toast.makeText(requireContext(), "Minting failed", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    binding.progressBar.visibility = View.GONE
+                    binding.btnProtect.isEnabled = true
+                    Toast.makeText(
+                        requireContext(),
+                        "Failed to enforce protection: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+            }
+        }
+    }
+
+    /**
+     * For sighting devices: check with the API if the owner has enforced protection.
+     * If yes, blur the image preview.
+     */
+    private fun checkAndDisplayEnforcement(pHash: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            try {
+                val enforcement = CloudApiClient.checkEnforcement(pHash)
+
+                if (enforcement.isEnforced) {
+                    // Update local DB
+                    val db = AppDatabase.getInstance(requireContext())
+                    val asset = db.signatureDao().getById(assetId)
+                    if (asset != null) {
+                        asset.isEnforced = true
+                        db.signatureDao().update(asset)
+                    }
+
+                    withContext(Dispatchers.Main) {
+                        // Blur the image
+                        val bitmap = withContext(Dispatchers.Default) {
+                            ImageBlurUtil.loadScaledBitmap(requireContext(), asset?.uri ?: "")
+                        }
+                        if (bitmap != null) {
+                            val blurred = ImageBlurUtil.blurBitmap(bitmap, 25)
+                            binding.ivPreview.setImageBitmap(blurred)
+                        }
+                        binding.layoutBlurOverlay.visibility = View.VISIBLE
+
+                        binding.tvEnforcementStatus.visibility = View.VISIBLE
+                        binding.tvEnforcementStatus.text = getString(R.string.sighting_enforced)
+                        binding.tvEnforcementStatus.setTextColor(
+                            ContextCompat.getColor(requireContext(), R.color.status_sighting)
+                        )
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        binding.tvEnforcementStatus.visibility = View.VISIBLE
+                        binding.tvEnforcementStatus.text = getString(R.string.sighting_not_enforced)
+                        binding.tvEnforcementStatus.setTextColor(
+                            ContextCompat.getColor(requireContext(), R.color.text_secondary)
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                // Silently fail — enforcement check is best-effort
             }
         }
     }
@@ -142,16 +294,17 @@ class AssetDetailFragment : Fragment() {
             try {
                 val db = AppDatabase.getInstance(requireContext())
                 val asset = db.signatureDao().getById(assetId)
+                    ?: throw IllegalStateException("Asset not found")
 
-                if (asset == null) {
-                    throw IllegalStateException("Asset not found")
-                }
-
-                // Query Vertex AI Vector Search - Module 5
-                val result = CloudApiClient.verifyAsset(asset.hexVector)
+                // Check on-chain existence
+                val exists = com.assetvault.network.BlockchainManager.checkAsset(asset.pHash)
 
                 binding.progressBar.visibility = View.GONE
-                binding.tvStatus.text = "Verification: $result"
+                binding.tvStatus.text = if (exists) {
+                    "Verified ✅ — Asset exists on blockchain"
+                } else {
+                    "Not found on blockchain"
+                }
 
                 Toast.makeText(requireContext(), "Verification complete!", Toast.LENGTH_SHORT).show()
 

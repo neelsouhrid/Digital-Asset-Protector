@@ -8,7 +8,7 @@ import android.util.Log
 
 /**
  * SecurePreferences - Module 3
- * EncryptedSharedPreferences for Private Keys and UUID.
+ * EncryptedSharedPreferences for Private Keys, UUID, and Google email.
  */
 class SecurePreferences(context: Context) {
 
@@ -55,6 +55,54 @@ class SecurePreferences(context: Context) {
         prefs.edit().putString(KEY_PUBLIC_KEY, publicKey).apply()
     }
 
+    // ── Google Sign-In ──────────────────────────────────────────
+
+    fun getGoogleEmail(): String? {
+        return prefs.getString(KEY_GOOGLE_EMAIL, null)
+    }
+
+    fun setGoogleEmail(email: String) {
+        prefs.edit().putString(KEY_GOOGLE_EMAIL, email).apply()
+        Log.d(TAG, "Google email stored: $email")
+    }
+
+    fun getGoogleDisplayName(): String? {
+        return prefs.getString(KEY_GOOGLE_NAME, null)
+    }
+
+    fun setGoogleDisplayName(name: String) {
+        prefs.edit().putString(KEY_GOOGLE_NAME, name).apply()
+    }
+
+    fun getGooglePhotoUrl(): String? {
+        return prefs.getString(KEY_GOOGLE_PHOTO, null)
+    }
+
+    fun setGooglePhotoUrl(url: String) {
+        prefs.edit().putString(KEY_GOOGLE_PHOTO, url).apply()
+    }
+
+    /**
+     * Returns the owner ID to use everywhere.
+     * Prefers Google email, falls back to UUID.
+     */
+    fun getOwnerId(): String {
+        return getGoogleEmail() ?: getOrCreateUuid()
+    }
+
+    fun isSignedIn(): Boolean {
+        return getGoogleEmail() != null
+    }
+
+    fun clearGoogleAccount() {
+        prefs.edit()
+            .remove(KEY_GOOGLE_EMAIL)
+            .remove(KEY_GOOGLE_NAME)
+            .remove(KEY_GOOGLE_PHOTO)
+            .apply()
+        Log.d(TAG, "Google account cleared")
+    }
+
     fun clearKeys() {
         prefs.edit()
             .remove(KEY_PRIVATE_KEY)
@@ -77,6 +125,9 @@ class SecurePreferences(context: Context) {
         private const val KEY_PRIVATE_KEY = "private_key"
         private const val KEY_PUBLIC_KEY = "public_key"
         private const val KEY_FIRST_RUN = "first_run"
+        private const val KEY_GOOGLE_EMAIL = "google_email"
+        private const val KEY_GOOGLE_NAME = "google_display_name"
+        private const val KEY_GOOGLE_PHOTO = "google_photo_url"
 
         @Volatile
         private var INSTANCE: SecurePreferences? = null

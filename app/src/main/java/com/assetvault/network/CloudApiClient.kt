@@ -1,149 +1,161 @@
 package com.assetvault.network
 
 import android.util.Log
+import com.assetvault.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.OutputStream
-import java.net.HttpURLConnection
-import java.net.URL
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 /**
  * CloudApiClient - Module 5
- * Interface for Google Cloud Vertex AI Vector Search.
+ * Real Retrofit client for the Cloud Run pHash API.
  */
 object CloudApiClient {
 
     private const val TAG = "CloudApiClient"
 
-    // Vertex AI endpoint (use BuildConfig in production)
-    private const val VERTEX_AI_ENDPOINT = "https://us-central1-aiplatform.googleapis.com/v1"
-
-    // Project and location (configure in production)
-    private const val PROJECT_ID = "your-project-id"
-    private const val LOCATION = "us-central1"
-
-    // Demo mode
-    private var isDemoMode = true
-
-    /**
-     * Initialize with actual Google Cloud credentials.
-     */
-    fun initialize(apiKey: String?) {
-        if (apiKey.isNullOrEmpty()) {
-            Log.w(TAG, "No API key provided, using demo mode")
-            isDemoMode = true
-            return
+    private val okHttpClient: OkHttpClient by lazy {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
         }
+        OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
+    }
 
-        isDemoMode = false
-        Log.d(TAG, "Cloud client initialized with real connection")
+    private val retrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl(Constants.CLOUD_RUN_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    private val api: AssetVaultApi by lazy {
+        retrofit.create(AssetVaultApi::class.java)
     }
 
     /**
-     * Register an asset vector with Vertex AI Vector Search.
+     * POST /search — check if a pHash already exists in the system.
      */
-    suspend fun registerAsset(hexVector: String, assetId: Long): Boolean = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Registering asset $assetId with Vertex AI")
-
-        if (isDemoMode) {
-            // Demo mode - always succeed
-            Log.d(TAG, "Demo mode - Asset registered (mock)")
-            return@withContext true
+    suspend fun searchAsset(
+        phash: String,
+        deviceHash: String,
+        locationName: String,
+        lat: Double,
+        lng: Double
+    ): SearchResponse = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Searching for asset with pHash: ${phash.take(16)}...")
+        val request = SearchRequest(phash, deviceHash, locationName, lat, lng)
+        val response = api.searchAsset(request)
+        if (response.isSuccessful) {
+            val body = response.body()
+                ?: throw Exception("Empty response from /search")
+            Log.d(TAG, "Search result: match=${body.matchFound}, sim=${body.similarity}")
+            body
+        } else {
+            throw Exception("Search failed: ${response.code()} ${response.errorBody()?.string()}")
         }
+    }
 
+    /**
+     * POST /register — register a new protected asset.
+     */
+    suspend fun registerAsset(
+        phash: String,
+        ownerId: String,
+        blockchainTx: String
+    ): RegisterResponse = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Registering asset with pHash: ${phash.take(16)}...")
+        val request = RegisterRequest(phash, ownerId, blockchainTx)
+        val response = api.registerAsset(request)
+        if (response.isSuccessful) {
+            val body = response.body()
+                ?: throw Exception("Empty response from /register")
+            Log.d(TAG, "Register result: registered=${body.registered}, id=${body.assetId}")
+            body
+        } else {
+            throw Exception("Register failed: ${response.code()} ${response.errorBody()?.string()}")
+        }
+    }
+
+    /**
+     * POST /protect — owner enforces protection on their asset.
+     * After this call, sighting devices will blur the image.
+     */
+    suspend fun protectAsset(
+        phash: String,
+        ownerId: String
+    ): ProtectResponse = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Enforcing protection for pHash: ${phash.take(16)}...")
+        val request = ProtectRequest(phash, ownerId)
+        val response = api.protectAsset(request)
+        if (response.isSuccessful) {
+            val body = response.body()
+                ?: throw Exception("Empty response from /protect")
+            Log.d(TAG, "Protect result: success=${body.success}")
+            body
+        } else {
+            throw Exception("Protect failed: ${response.code()} ${response.errorBody()?.string()}")
+        }
+    }
+
+    /**
+     * GET /enforcement?phash=X — check if an asset's enforcement is active.
+     * Called by sighting devices to know whether to blur.
+     */
+    suspend fun checkEnforcement(phash: String): EnforcementResponse = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Checking enforcement for pHash: ${phash.take(16)}...")
+        val response = api.checkEnforcement(phash)
+        if (response.isSuccessful) {
+            val body = response.body()
+                ?: throw Exception("Empty response from /enforcement")
+            Log.d(TAG, "Enforcement: isEnforced=${body.isEnforced}")
+            body
+        } else {
+            // If endpoint doesn't exist yet, default to not enforced
+            Log.w(TAG, "Enforcement check failed: ${response.code()}")
+            EnforcementResponse(isEnforced = false, enforcedAt = null, ownerId = null)
+        }
+    }
+
+    /**
+     * GET /health — check if the Cloud Run service is alive.
+     */
+    suspend fun healthCheck(): Boolean = withContext(Dispatchers.IO) {
         try {
-            // Real implementation would:
-            // 1. Convert hex vector to numeric array
-            // 2. Call Vertex AI Vector Search API to add to index
-            // 3. Return success/failure
-
-            val success = submitToVertexAI(hexVector, assetId)
-            Log.d(TAG, "Asset registered: $success")
-            success
+            val response = api.healthCheck()
+            response.isSuccessful && response.body()?.status == "ok"
         } catch (e: Exception) {
-            Log.e(TAG, "Registration failed", e)
+            Log.e(TAG, "Health check failed", e)
             false
         }
     }
 
     /**
-     * Verify an asset by running similarity search.
-     * Returns match info if found.
+     * POST /fund-wallet — requests startup gas from the backend
      */
-    suspend fun verifyAsset(hexVector: String): String = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Verifying asset with Vertex AI")
-
-        if (isDemoMode) {
-            // Demo mode - return mock result
-            val mockResult = "Match found: 98% similar (mock detection)"
-            Log.d(TAG, "Demo mode - $mockResult")
-            return@withContext mockResult
-        }
-
-        try {
-            val result = queryVertexAI(hexVector)
-            Log.d(TAG, "Verification result: $result")
-            result
-        } catch (e: Exception) {
-            Log.e(TAG, "Verification failed", e)
-            "Verification failed: ${e.message}"
+    suspend fun fundWallet(
+        walletAddress: String,
+        appEmail: String
+    ): FundWalletResponse = withContext(Dispatchers.IO) {
+        Log.d(TAG, "Requesting startup gas for: $walletAddress...")
+        val request = FundWalletRequest(walletAddress, appEmail)
+        val response = api.fundWallet(request)
+        if (response.isSuccessful) {
+            val body = response.body()
+                ?: throw Exception("Empty response from /fund-wallet")
+            Log.d(TAG, "Fund wallet result: success=${body.success}")
+            body
+        } else {
+            throw Exception("Fund wallet failed: ${response.code()} ${response.errorBody()?.string()}")
         }
     }
-
-    /**
-     * Search for similar assets using the hex vector.
-     */
-    suspend fun findSimilarAssets(hexVector: String, limit: Int = 10): List<SimilarAsset> = withContext(Dispatchers.IO) {
-        Log.d(TAG, "Finding similar assets (limit: $limit)")
-
-        if (isDemoMode) {
-            return@withContext emptyList()
-        }
-
-        try {
-            querySimilarVectors(hexVector, limit)
-        } catch (e: Exception) {
-            Log.e(TAG, "Search failed", e)
-            emptyList()
-        }
-    }
-
-    private fun submitToVertexAI(hexVector: String, assetId: Long): Boolean {
-        // In production, make actual API call:
-        //
-        // val url = URL("$VERTEX_AI_ENDPOINT/projects/$PROJECT_ID/locations/$LOCATION/indexes/$INDEX_ID/deployedIndexes/$DEPLOYED_INDEX_ID:upsert")
-        // val connection = url.openConnection() as HttpURLConnection
-        // connection.requestMethod = "POST"
-        // connection.setRequestProperty("Authorization", "Bearer $accessToken")
-        // connection.setRequestProperty("Content-Type", "application/json")
-        //
-        // val payload = mapOf(
-        //     "ids" to listOf(assetId.toString()),
-        //     "embedding" to hexToFloatArray(hexVector)
-        // )
-        // ...
-
-        throw NotImplementedError("Real Vertex AI integration requires GCP setup")
-    }
-
-    private fun queryVertexAI(hexVector: String): String {
-        // Similar to above but for finding nearest neighbors
-
-        throw NotImplementedError("Real Vertex AI integration requires GCP setup")
-    }
-
-    private fun querySimilarVectors(hexVector: String, limit: Int): List<SimilarAsset> {
-        // Return list of similar assets
-
-        throw NotImplementedError("Real Vertex AI integration requires GCP setup")
-    }
-
-    /**
-     * Data class for similar asset results.
-     */
-    data class SimilarAsset(
-        val assetId: Long,
-        val similarity: Float,
-        val timestamp: Long
-    )
 }

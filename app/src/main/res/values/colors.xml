@@ -16,4 +16,9 @@
     <color name="text_secondary">#757575</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
+
+    <!-- Status colors -->
+    <color name="status_protected">#2E7D32</color>
+    <color name="status_sighting">#E65100</color>
+    <color name="status_pending">#F9A825</color>
 </resources>

@@ -14,4 +14,32 @@
     <string name="back">Back</string>
     <string name="thumbnail">Thumbnail</string>
     <string name="accessibility_service_description">Monitors screen to detect and protect sensitive content.</string>
+
+    <!-- Sign-In -->
+    <string name="sign_in_tagline">Protect your digital assets with blockchain</string>
+
+    <!-- Home -->
+    <string name="welcome_home">Welcome</string>
+    <string name="choose_protection_mode">Choose how to protect your photos</string>
+    <string name="protect_single">Protect Specific Photo</string>
+    <string name="protect_single_desc">Pick one photo from your device to protect.\nNo broad permissions needed.</string>
+    <string name="protect_library">Protect My Library</string>
+    <string name="protect_library_desc">Browse your full photo library and select\nmultiple photos to protect at once.</string>
+    <string name="view_vault">View My Vault</string>
+
+    <!-- Library -->
+    <string name="no_photos_selected">No photos selected</string>
+    <string name="protect_selected">Protect Selected</string>
+
+    <!-- Result -->
+    <string name="done">Done</string>
+    <string name="status_icon">Status icon</string>
+
+    <!-- Enforcement -->
+    <string name="protect_asset">Protect Asset</string>
+    <string name="protected_by_owner">Protected by Owner</string>
+    <string name="enforcement_active">🔒 Enforcement Active — sighting devices will blur this image</string>
+    <string name="enforcement_inactive">Tap \"Protect Asset\" to enforce protection on sighting devices</string>
+    <string name="sighting_enforced">⚠️ This image is protected. The owner has enforced protection.</string>
+    <string name="sighting_not_enforced">This image was found in the system but the owner has not yet enforced protection.</string>
 </resources>

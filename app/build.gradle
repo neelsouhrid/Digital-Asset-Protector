@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace 'com.assetvault'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.assetvault"
         minSdk 24
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
@@ -26,12 +26,13 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        coreLibraryDesugaringEnabled true
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     kotlinOptions {
-        jvmTarget = '17'
+        jvmTarget = '1.8'
     }
 
     buildFeatures {
@@ -40,6 +41,8 @@ android {
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.3'
+
     // AndroidX Core
     implementation 'androidx.core:core-ktx:1.10.1'
     implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -82,7 +85,10 @@ dependencies {
     implementation 'androidx.work:work-runtime-ktx:2.8.1'
 
     // Web3j for blockchain
-    implementation 'org.web3j:core:4.10.2'
+    implementation 'org.web3j:core:4.8.9-android'
+
+    // Google Sign-In
+    implementation 'com.google.android.gms:play-services-auth:20.7.0'
 
     // Testing
     testImplementation 'junit:junit:4.13.2'
