@@ -21,11 +21,14 @@ interface SignatureDao {
     @Query("SELECT * FROM signatures ORDER BY timestamp DESC")
     suspend fun getAll(): List<SignatureEntity>
 
+    @Query("SELECT * FROM signatures WHERE ownerEmail = :email ORDER BY timestamp DESC")
+    suspend fun getByOwnerEmail(email: String): List<SignatureEntity>
+
     @Query("SELECT * FROM signatures WHERE id = :id")
     suspend fun getById(id: Long): SignatureEntity?
 
-    @Query("SELECT * FROM signatures WHERE uri = :uri LIMIT 1")
-    suspend fun getByUri(uri: String): SignatureEntity?
+    @Query("SELECT * FROM signatures WHERE uri = :uri AND ownerEmail = :email LIMIT 1")
+    suspend fun getByUriAndOwner(uri: String, email: String): SignatureEntity?
 
     @Query("DELETE FROM signatures WHERE id = :id")
     suspend fun deleteById(id: Long)

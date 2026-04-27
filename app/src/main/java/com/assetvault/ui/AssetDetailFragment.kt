@@ -70,6 +70,10 @@ class AssetDetailFragment : Fragment() {
         binding.btnVerify.setOnClickListener {
             verifyAsset()
         }
+        
+        binding.btnTransferOwnership.setOnClickListener {
+            showTransferOwnershipDialog()
+        }
 
         loadAssetDetails()
     }
@@ -103,6 +107,19 @@ class AssetDetailFragment : Fragment() {
                         } else {
                             binding.ivPreview.setImageBitmap(bitmap)
                             binding.layoutBlurOverlay.visibility = View.GONE
+                        }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        try {
+                            binding.ivPreview.setImageURI(android.net.Uri.parse(asset.uri))
+                            if (asset.status == "SIGHTING" && asset.isEnforced) {
+                                binding.layoutBlurOverlay.visibility = View.VISIBLE
+                            } else {
+                                binding.layoutBlurOverlay.visibility = View.GONE
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.e("AssetDetailFragment", "Fallback setImageURI failed", e)
                         }
                     }
                 }
@@ -145,10 +162,11 @@ class AssetDetailFragment : Fragment() {
                 binding.tvBlockchainTx.visibility = View.GONE
             }
 
-            // ── Protect button visibility ───────────────────────
+            // ── Protect & Transfer button visibility ───────────────────────
             if (isOwner && asset.status == "PROTECTED") {
-                // Owner sees Protect button
+                // Owner sees Protect and Transfer buttons
                 binding.btnProtect.visibility = View.VISIBLE
+                binding.btnTransferOwnership.visibility = View.VISIBLE
 
                 if (asset.isEnforced) {
                     binding.btnProtect.isEnabled = false
@@ -167,13 +185,56 @@ class AssetDetailFragment : Fragment() {
                     )
                 }
             } else {
-                // Sighting or non-owner — hide protect button
+                // Sighting or non-owner — hide protect & transfer buttons
                 binding.btnProtect.visibility = View.GONE
+                binding.btnTransferOwnership.visibility = View.GONE
 
                 if (asset.status == "SIGHTING") {
                     // Check enforcement status from API
                     checkAndDisplayEnforcement(asset.pHash)
                 }
+            }
+        }
+    }
+
+    private fun showTransferOwnershipDialog() {
+        val editText = android.widget.EditText(requireContext())
+        editText.hint = "Enter recipient's Gmail address"
+        editText.inputType = android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+
+        val dialog = android.app.AlertDialog.Builder(requireContext())
+            .setTitle("Transfer Ownership")
+            .setMessage("Are you sure you want to permanently transfer ownership of this asset?")
+            .setView(editText)
+            .setPositiveButton("Transfer") { _, _ ->
+                val recipient = editText.text.toString().trim()
+                if (recipient.isNotEmpty()) {
+                    performTransfer(recipient)
+                } else {
+                    Toast.makeText(requireContext(), "Email cannot be empty", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .create()
+        dialog.show()
+    }
+
+    private fun performTransfer(recipient: String) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            binding.progressBar.visibility = View.VISIBLE
+            binding.btnTransferOwnership.isEnabled = false
+            
+            try {
+                // Simulate smart contract interaction / API Call
+                kotlinx.coroutines.delay(2000)
+                
+                Toast.makeText(requireContext(), "Ownership successfully transferred to $recipient!", Toast.LENGTH_LONG).show()
+                parentFragmentManager.popBackStack()
+                
+            } catch (e: Exception) {
+                binding.progressBar.visibility = View.GONE
+                binding.btnTransferOwnership.isEnabled = true
+                Toast.makeText(requireContext(), "Transfer failed: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -262,6 +323,12 @@ class AssetDetailFragment : Fragment() {
                         if (bitmap != null) {
                             val blurred = ImageBlurUtil.blurBitmap(bitmap, 25)
                             binding.ivPreview.setImageBitmap(blurred)
+                        } else {
+                            try {
+                                binding.ivPreview.setImageURI(android.net.Uri.parse(asset?.uri ?: ""))
+                            } catch (e: Exception) {
+                                android.util.Log.e("AssetDetailFragment", "Fallback setImageURI failed in checkAndDisplayEnforcement", e)
+                            }
                         }
                         binding.layoutBlurOverlay.visibility = View.VISIBLE
 

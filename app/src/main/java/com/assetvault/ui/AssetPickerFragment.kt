@@ -111,8 +111,9 @@ class AssetPickerFragment : Fragment() {
                 val db = AppDatabase.getInstance(requireContext())
                 val prefs = SecurePreferences.getInstance(requireContext())
 
+                val ownerEmailForCheck = prefs.getOwnerId()
                 // Check if already processed (Rule 6)
-                val existing = db.signatureDao().getByUri(uri.toString())
+                val existing = db.signatureDao().getByUriAndOwner(uri.toString(), ownerEmailForCheck)
                 if (existing != null) {
                     withContext(Dispatchers.Main) {
                         binding.progressBar.visibility = View.GONE
@@ -151,7 +152,6 @@ class AssetPickerFragment : Fragment() {
                     requireContext().contentResolver,
                     Settings.Secure.ANDROID_ID
                 ) ?: "unknown"
-
                 val ownerId = prefs.getOwnerId()
 
                 // Step 3: Search cloud for existing match
@@ -168,28 +168,64 @@ class AssetPickerFragment : Fragment() {
                 )
 
                 if (searchResult.matchFound) {
-                    // ── Step 4a: SIGHTING ──────────────────────────────
-                    Log.d(TAG, "Match found! Similarity: ${searchResult.similarity}%")
+                    // Check if current user is the actual owner (Sync from cloud)
+                    val enforcement = try {
+                        CloudApiClient.checkEnforcement(pHash)
+                    } catch(e: Exception) {
+                        com.assetvault.network.EnforcementResponse(isEnforced = searchResult.isEnforced, enforcedAt = null, ownerId = null)
+                    }
 
-                    val entity = SignatureEntity(
-                        uri = uri.toString(),
-                        hexVector = pHash,
-                        pHash = pHash,
-                        timestamp = System.currentTimeMillis(),
-                        blockchainTxId = null,
-                        status = "SIGHTING",
-                        similarity = searchResult.similarity.toFloat(),
-                        ownerEmail = ownerId
-                    )
-                    db.signatureDao().insert(entity)
+                    if (enforcement.ownerId == ownerId) {
+                        // ── Step 4a: RESTORE PROTECTED ────────────────────────────
+                        Log.d(TAG, "Restored own asset from cloud.")
+                        val entity = SignatureEntity(
+                            uri = uri.toString(),
+                            hexVector = pHash,
+                            pHash = pHash,
+                            timestamp = System.currentTimeMillis(),
+                            blockchainTxId = searchResult.ownerBlockchainTx,
+                            status = "PROTECTED",
+                            isEnforced = enforcement.isEnforced,
+                            ownerEmail = ownerId
+                        )
+                        db.signatureDao().insert(entity)
 
-                    withContext(Dispatchers.Main) {
-                        binding.progressBar.visibility = View.GONE
-                        showResult(
+                        withContext(Dispatchers.Main) {
+                            binding.progressBar.visibility = View.GONE
+                            showResult(
+                                status = "PROTECTED",
+                                txHash = searchResult.ownerBlockchainTx,
+                                uri = uri.toString()
+                            )
+                        }
+                    } else {
+                        // ── Step 4b: SIGHTING ──────────────────────────────
+                        Log.d(TAG, "Match found! Similarity: ${searchResult.similarity}%")
+
+                        // Use the original pHash that was registered on the blockchain
+                        val matchedHash = searchResult.matchedPhash ?: pHash
+
+                        val entity = SignatureEntity(
+                            uri = uri.toString(),
+                            hexVector = pHash, // Local pHash vector
+                            pHash = matchedHash, // Original pHash for blockchain verification
+                            timestamp = System.currentTimeMillis(),
+                            blockchainTxId = null,
                             status = "SIGHTING",
                             similarity = searchResult.similarity.toFloat(),
-                            uri = uri.toString()
+                            ownerEmail = ownerId,
+                            isEnforced = searchResult.isEnforced
                         )
+                        db.signatureDao().insert(entity)
+
+                        withContext(Dispatchers.Main) {
+                            binding.progressBar.visibility = View.GONE
+                            showResult(
+                                status = "SIGHTING",
+                                similarity = searchResult.similarity.toFloat(),
+                                uri = uri.toString()
+                            )
+                        }
                     }
                 } else {
                     // ── Step 4b: PROTECT ────────────────────────────────

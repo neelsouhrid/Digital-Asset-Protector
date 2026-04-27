@@ -64,14 +64,32 @@ object BlockchainManager {
     }
 
     /**
-     * Generate a new wallet keypair.
-     * Returns the private key as a hex string (no 0x prefix).
+     * Generate a deterministic wallet keypair based on the user's Google email.
+     * This guarantees 1 Google ID = 1 Wallet FOREVER across all devices.
      */
-    fun generateWallet(): String {
-        val keyPair: ECKeyPair = Keys.createEcKeyPair()
-        val privateKeyHex = Numeric.toHexStringNoPrefixZeroPadded(keyPair.privateKey, 64)
-        Log.d(TAG, "Generated new wallet: 0x${Keys.getAddress(keyPair)}")
+    fun generateDeterministicWallet(email: String): String {
+        val digest = java.security.MessageDigest.getInstance("SHA-256")
+        val hash = digest.digest((email + "SecretVaultSalt2026").toByteArray(Charsets.UTF_8))
+        val privateKeyInt = BigInteger(1, hash)
+        val ecKeyPair = ECKeyPair.create(privateKeyInt)
+        val privateKeyHex = Numeric.toHexStringNoPrefixZeroPadded(ecKeyPair.privateKey, 64)
+        Log.d(TAG, "Generated deterministic wallet for $email: 0x${Keys.getAddress(ecKeyPair)}")
         return privateKeyHex
+    }
+
+    /**
+     * Get the current balance in wei.
+     */
+    suspend fun getBalance(): BigInteger = withContext(Dispatchers.IO) {
+        val w3 = web3j ?: return@withContext BigInteger.ZERO
+        val creds = credentials ?: return@withContext BigInteger.ZERO
+        try {
+            val response = w3.ethGetBalance(creds.address, DefaultBlockParameterName.LATEST).send()
+            response.balance
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get balance", e)
+            BigInteger.ZERO
+        }
     }
 
     /**
@@ -178,9 +196,22 @@ object BlockchainManager {
     }
 
     /**
-     * Get the current wallet address.
+     * Get the current wallet address as a checksummed string (for Web3.py compatibility).
      */
-    fun getWalletAddress(): String? = credentials?.address
+    fun getWalletAddress(): String? {
+        val address = credentials?.address ?: return null
+        return try {
+            Keys.toChecksumAddress(address)
+        } catch (e: Exception) {
+            try {
+                // Sometimes it expects the address without 0x
+                Keys.toChecksumAddress(Numeric.cleanHexPrefix(address))
+            } catch (e2: Exception) {
+                Log.e(TAG, "Failed to checksum address", e2)
+                address
+            }
+        }
+    }
 
     /**
      * Shutdown Web3j connection.

@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#6200EE</color>
-    <color name="primary_variant">#3700B3</color>
+    <!-- Premium Purple Palette -->
+    <color name="purple_100">#9D4CCC</color>
+    <color name="purple_200">#8339B3</color>
+    <color name="purple_500">#682699</color>
+    <color name="purple_700">#4E1380</color>
+    <color name="purple_900">#330066</color>
+    
+    <color name="primary">@color/purple_500</color>
+    <color name="primary_variant">@color/purple_700</color>
     <color name="secondary">#03DAC6</color>
     <color name="secondary_variant">#018786</color>
     <color name="background">#FAFAFA</color>
@@ -12,10 +19,14 @@
     <color name="on_background">#000000</color>
     <color name="on_surface">#000000</color>
     <color name="on_error">#FFFFFF</color>
+    
     <color name="text_primary">#212121</color>
     <color name="text_secondary">#757575</color>
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
+    
+    <!-- Golden Accent -->
+    <color name="golden">#FFD700</color>
 
     <!-- Status colors -->
     <color name="status_protected">#2E7D32</color>

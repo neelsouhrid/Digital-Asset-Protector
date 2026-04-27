@@ -146,7 +146,7 @@ class LibraryFragment : Fragment() {
 
                 try {
                     // Check if already in DB
-                    val existing = db.signatureDao().getByUri(uri.toString())
+                    val existing = db.signatureDao().getByUriAndOwner(uri.toString(), ownerId)
                     if (existing != null) {
                         sightingCount++
                         continue
@@ -175,19 +175,43 @@ class LibraryFragment : Fragment() {
                         )
 
                         if (searchResult.matchFound) {
-                            // SIGHTING
-                            val entity = SignatureEntity(
-                                uri = uri.toString(),
-                                hexVector = pHash,
-                                pHash = pHash,
-                                timestamp = System.currentTimeMillis(),
-                                blockchainTxId = null,
-                                status = "SIGHTING",
-                                similarity = searchResult.similarity.toFloat(),
-                                ownerEmail = ownerId
-                            )
-                            db.signatureDao().insert(entity)
-                            sightingCount++
+                            // Check if current user is the actual owner (Sync from cloud)
+                            val enforcement = try {
+                                CloudApiClient.checkEnforcement(pHash)
+                            } catch(e: Exception) {
+                                com.assetvault.network.EnforcementResponse(isEnforced = searchResult.isEnforced, enforcedAt = null, ownerId = null)
+                            }
+
+                            if (enforcement.ownerId == ownerId) {
+                                // Sync from cloud: restore as PROTECTED
+                                val entity = SignatureEntity(
+                                    uri = uri.toString(),
+                                    hexVector = pHash,
+                                    pHash = pHash,
+                                    timestamp = System.currentTimeMillis(),
+                                    blockchainTxId = searchResult.ownerBlockchainTx,
+                                    status = "PROTECTED",
+                                    isEnforced = enforcement.isEnforced,
+                                    ownerEmail = ownerId
+                                )
+                                db.signatureDao().insert(entity)
+                                protectedCount++
+                            } else {
+                                // SIGHTING
+                                val entity = SignatureEntity(
+                                    uri = uri.toString(),
+                                    hexVector = pHash,
+                                    pHash = pHash,
+                                    timestamp = System.currentTimeMillis(),
+                                    blockchainTxId = null,
+                                    status = "SIGHTING",
+                                    similarity = searchResult.similarity.toFloat(),
+                                    ownerEmail = ownerId,
+                                    isEnforced = searchResult.isEnforced
+                                )
+                                db.signatureDao().insert(entity)
+                                sightingCount++
+                            }
                         } else {
                             // PROTECT
                             val txHash = BlockchainManager.registerAsset(pHash)

@@ -46,7 +46,8 @@ class MainActivity : AppCompatActivity() {
 
         requestNecessaryPermissions()
         initializeBlockchain()
-        setupToolbar()
+        setupHeaderAndDrawer()
+        setupBottomNavigation()
 
         if (savedInstanceState == null) {
             showHomeFragment()
@@ -64,36 +65,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Initialize blockchain wallet — generate on first run, load on subsequent runs.
-     */
     private fun initializeBlockchain() {
         val prefs = SecurePreferences.getInstance(this)
 
-        var privateKey = prefs.getPrivateKey()
-        val isFirstLaunch = privateKey == null
-
-        if (privateKey == null) {
-            // First launch: generate a new wallet
-            privateKey = BlockchainManager.generateWallet()
-            prefs.setPrivateKey(privateKey)
+        val email = prefs.getGoogleEmail()
+        if (email == null) {
+            Toast.makeText(this, "Not signed in!", Toast.LENGTH_SHORT).show()
+            return
         }
+
+        // 1 Google ID = 1 Wallet FOREVER
+        val privateKey = BlockchainManager.generateDeterministicWallet(email)
+        prefs.setPrivateKey(privateKey)
 
         try {
             BlockchainManager.initialize(privateKey)
 
-            // If this is a brand new wallet, silently request some gas from our backend Faucet!
-            if (isFirstLaunch) {
-                val walletAddress = BlockchainManager.getWalletAddress()
-                val email = prefs.getGoogleEmail() ?: "unknown@email.com"
-                if (walletAddress != null) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        try {
-                            android.util.Log.d("MainActivity", "Requesting auto-faucet for $walletAddress")
+            val walletAddress = BlockchainManager.getWalletAddress()
+            if (walletAddress != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val balance = BlockchainManager.getBalance()
+                        // If balance < 0.03 POL (30000000000000000 wei), request refill
+                        val minBalance = java.math.BigInteger("30000000000000000")
+                        if (balance < minBalance) {
+                            android.util.Log.d("MainActivity", "Balance low ($balance wei). Requesting auto-faucet for $walletAddress")
                             CloudApiClient.fundWallet(walletAddress, email)
-                        } catch (e: Exception) {
-                            android.util.Log.e("MainActivity", "Auto-faucet failed", e)
+                        } else {
+                            android.util.Log.d("MainActivity", "Balance sufficient ($balance wei). Skipping auto-faucet.")
                         }
+                    } catch (e: Exception) {
+                        android.util.Log.e("MainActivity", "Auto-faucet failed", e)
                     }
                 }
             }
@@ -102,38 +104,98 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Show signed-in user's name and profile photo in the toolbar.
-     */
-    private fun setupToolbar() {
+    private fun setupHeaderAndDrawer() {
         val prefs = SecurePreferences.getInstance(this)
-
-        val toolbar = binding.toolbar
-        setSupportActionBar(toolbar)
-
-        val name = prefs.getGoogleDisplayName()
+        val name = prefs.getGoogleDisplayName() ?: "Unknown User"
+        val email = prefs.getGoogleEmail() ?: "No Email"
         val photoUrl = prefs.getGooglePhotoUrl()
 
-        if (name != null) {
-            toolbar.subtitle = name
+        // Main Header
+        binding.tvUsername.text = name
+        if (photoUrl != null) {
+            binding.ivProfile.load(photoUrl) {
+                crossfade(true)
+                transformations(CircleCropTransformation())
+                placeholder(R.drawable.ic_image_placeholder)
+            }
         }
 
-        // Add profile photo to toolbar if available
+        binding.ivSignOut.setOnClickListener {
+            performSignOut()
+        }
+
+        // Nav Header
+        val navHeader = binding.navigationView.getHeaderView(0)
+        val navHeaderName = navHeader.findViewById<TextView>(R.id.navHeaderName)
+        val navHeaderEmail = navHeader.findViewById<TextView>(R.id.navHeaderEmail)
+        val navHeaderProfile = navHeader.findViewById<ImageView>(R.id.navHeaderProfile)
+
+        navHeaderName.text = name
+        navHeaderEmail.text = email
         if (photoUrl != null) {
-            val ivProfile = ImageView(this).apply {
-                layoutParams = androidx.appcompat.widget.Toolbar.LayoutParams(
-                    dpToPx(32), dpToPx(32)
-                ).apply {
-                    marginEnd = dpToPx(8)
-                    gravity = android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL
-                }
-                load(photoUrl) {
-                    crossfade(true)
-                    transformations(CircleCropTransformation())
-                    placeholder(R.drawable.ic_image_placeholder)
-                }
+            navHeaderProfile.load(photoUrl) {
+                crossfade(true)
+                transformations(CircleCropTransformation())
+                placeholder(R.drawable.ic_image_placeholder)
             }
-            toolbar.addView(ivProfile)
+        }
+
+        // Drawer Item Clicks
+        binding.navigationView.setNavigationItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_profile -> { /* TODO */ }
+                R.id.nav_protected_assets -> { navigateToVault() }
+                R.id.nav_sightings_map -> { /* TODO: OpenStreetMap fragment */ }
+                R.id.nav_transfer_ownership -> { /* TODO */ }
+                R.id.nav_request_ownership -> { /* TODO */ }
+                R.id.nav_balance -> { 
+                    val balText = "You can upload up to 20 photos per day.\nYour balance renews up to 0.2 POL only when you extinguish all balance."
+                    Toast.makeText(this, balText, Toast.LENGTH_LONG).show()
+                }
+                R.id.nav_signout -> performSignOut()
+            }
+            binding.drawerLayout.close()
+            true
+        }
+    }
+
+    private fun setupBottomNavigation() {
+        binding.navHome.setOnClickListener {
+            showHomeFragment()
+        }
+        binding.navUpload.setOnClickListener {
+            navigateToAssetPicker()
+        }
+        binding.navVault.setOnClickListener {
+            navigateToVault()
+        }
+        binding.navMenu.setOnClickListener {
+            binding.drawerLayout.open()
+        }
+    }
+
+    private fun performSignOut() {
+        // Clear secure prefs
+        val prefs = SecurePreferences.getInstance(this)
+        prefs.clearGoogleAccount()
+        prefs.clearKeys() // Force new wallet for next login
+        
+        // DO NOT clear local DB to simulate a fresh device, to allow multi-user persistence
+        // CoroutineScope(Dispatchers.IO).launch {
+        //     com.assetvault.data.AppDatabase.getInstance(this@MainActivity).clearAllTables()
+        // }
+        
+        // Sign out from Google to allow selecting a different account next time
+        val gso = com.google.android.gms.auth.api.signin.GoogleSignInOptions.Builder(
+            com.google.android.gms.auth.api.signin.GoogleSignInOptions.DEFAULT_SIGN_IN
+        ).build()
+        val googleSignInClient = com.google.android.gms.auth.api.signin.GoogleSignIn.getClient(this, gso)
+        googleSignInClient.signOut().addOnCompleteListener {
+            // Go to SignInActivity
+            val intent = android.content.Intent(this, SignInActivity::class.java)
+            intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+            finish()
         }
     }
 

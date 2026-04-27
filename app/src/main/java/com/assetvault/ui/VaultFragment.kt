@@ -65,7 +65,9 @@ class VaultFragment : Fragment() {
     private fun loadAssets() {
         viewLifecycleOwner.lifecycleScope.launch {
             val db = AppDatabase.getInstance(requireContext())
-            val assets = db.signatureDao().getAll()
+            val prefs = com.assetvault.data.SecurePreferences.getInstance(requireContext())
+            val currentUser = prefs.getOwnerId()
+            val assets = db.signatureDao().getByOwnerEmail(currentUser)
 
             if (assets.isEmpty()) {
                 binding.tvEmptyState.visibility = View.VISIBLE
@@ -78,7 +80,7 @@ class VaultFragment : Fragment() {
                 syncEnforcementStatus(assets, db)
 
                 // Reload after sync to get updated isEnforced values
-                val refreshed = db.signatureDao().getAll()
+                val refreshed = db.signatureDao().getByOwnerEmail(currentUser)
                 adapter.submitList(refreshed)
             }
         }

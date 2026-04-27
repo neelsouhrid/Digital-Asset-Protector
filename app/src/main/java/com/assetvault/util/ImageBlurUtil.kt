@@ -36,6 +36,7 @@ object ImageBlurUtil {
                 BitmapFactory.decodeStream(stream)
             }
         } catch (e: Exception) {
+            android.util.Log.e("ImageBlurUtil", "Error loading bitmap from uri: $uriString", e)
             null
         }
     }
@@ -66,6 +67,7 @@ object ImageBlurUtil {
                 BitmapFactory.decodeStream(it, null, decodeOptions)
             }
         } catch (e: Exception) {
+            android.util.Log.e("ImageBlurUtil", "Error loading scaled bitmap from uri: $uriString", e)
             null
         }
     }
