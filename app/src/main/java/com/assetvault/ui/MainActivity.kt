@@ -146,12 +146,9 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_profile -> { /* TODO */ }
                 R.id.nav_protected_assets -> { navigateToVault() }
                 R.id.nav_sightings_map -> { /* TODO: OpenStreetMap fragment */ }
-                R.id.nav_transfer_ownership -> { /* TODO */ }
-                R.id.nav_request_ownership -> { /* TODO */ }
-                R.id.nav_balance -> { 
-                    val balText = "You can upload up to 20 photos per day.\nYour balance renews up to 0.2 POL only when you extinguish all balance."
-                    Toast.makeText(this, balText, Toast.LENGTH_LONG).show()
-                }
+                R.id.nav_transfer_ownership -> { navigateToTransferOwnership() }
+                R.id.nav_request_ownership -> { navigateToRequestOwnership() }
+                R.id.nav_balance -> { navigateToBalance() }
                 R.id.nav_signout -> performSignOut()
             }
             binding.drawerLayout.close()
@@ -170,6 +167,7 @@ class MainActivity : AppCompatActivity() {
             navigateToVault()
         }
         binding.navMenu.setOnClickListener {
+            updateNavbarSelection(R.id.navMenu)
             binding.drawerLayout.open()
         }
     }
@@ -205,13 +203,70 @@ class MainActivity : AppCompatActivity() {
 
     // ── Navigation ──────────────────────────────────────────────
 
+    private fun updateNavbarSelection(selectedId: Int) {
+        val navItems = listOf(
+            binding.navHome to R.id.navHome,
+            binding.navUpload to R.id.navUpload,
+            binding.navVault to R.id.navVault,
+            binding.navMenu to R.id.navMenu
+        )
+        
+        val defaultTint = android.graphics.Color.parseColor("#757575") // Grey
+        val selectedTint = androidx.core.content.ContextCompat.getColor(this, R.color.purple_700)
+
+        for ((view, id) in navItems) {
+            val icon = view.getChildAt(0) as android.widget.ImageView
+            val text = view.getChildAt(1) as android.widget.TextView
+            
+            if (id == selectedId) {
+                icon.setColorFilter(selectedTint)
+                text.setTextColor(selectedTint)
+                view.setBackgroundResource(R.drawable.nav_selected_bg)
+                
+                // Animation: lock opens up, turns around and closes
+                val animatorSet = android.animation.AnimatorSet()
+                val rotate = android.animation.ObjectAnimator.ofFloat(icon, "rotationY", 0f, 360f)
+                val scaleXUp = android.animation.ObjectAnimator.ofFloat(icon, "scaleX", 1f, 1.2f)
+                val scaleYUp = android.animation.ObjectAnimator.ofFloat(icon, "scaleY", 1f, 1.2f)
+                val scaleXDown = android.animation.ObjectAnimator.ofFloat(icon, "scaleX", 1.2f, 1f)
+                val scaleYDown = android.animation.ObjectAnimator.ofFloat(icon, "scaleY", 1.2f, 1f)
+                
+                scaleXUp.duration = 200
+                scaleYUp.duration = 200
+                scaleXDown.duration = 200
+                scaleYDown.duration = 200
+                rotate.duration = 400
+                
+                val upSet = android.animation.AnimatorSet()
+                upSet.playTogether(scaleXUp, scaleYUp)
+                val downSet = android.animation.AnimatorSet()
+                downSet.playTogether(scaleXDown, scaleYDown)
+                
+                val scaleSeq = android.animation.AnimatorSet()
+                scaleSeq.playSequentially(upSet, downSet)
+                
+                animatorSet.playTogether(rotate, scaleSeq)
+                animatorSet.interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+                animatorSet.start()
+            } else {
+                icon.setColorFilter(defaultTint)
+                text.setTextColor(defaultTint)
+                val typedValue = android.util.TypedValue()
+                theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, typedValue, true)
+                view.setBackgroundResource(typedValue.resourceId)
+            }
+        }
+    }
+
     private fun showHomeFragment() {
+        updateNavbarSelection(R.id.navHome)
         supportFragmentManager.commit {
             replace(R.id.fragmentContainer, HomeFragment())
         }
     }
 
     fun navigateToAssetPicker() {
+        updateNavbarSelection(R.id.navUpload)
         supportFragmentManager.commit {
             replace(R.id.fragmentContainer, AssetPickerFragment())
             addToBackStack("picker")
@@ -219,6 +274,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     fun navigateToVault() {
+        updateNavbarSelection(R.id.navVault)
         supportFragmentManager.commit {
             replace(R.id.fragmentContainer, VaultFragment())
             addToBackStack("vault")
@@ -236,6 +292,27 @@ class MainActivity : AppCompatActivity() {
         supportFragmentManager.commit {
             replace(R.id.fragmentContainer, AssetDetailFragment.newInstance(assetId))
             addToBackStack("detail")
+        }
+    }
+
+    fun navigateToTransferOwnership() {
+        supportFragmentManager.commit {
+            replace(R.id.fragmentContainer, TransferOwnershipFragment())
+            addToBackStack("transfer")
+        }
+    }
+
+    fun navigateToRequestOwnership() {
+        supportFragmentManager.commit {
+            replace(R.id.fragmentContainer, RequestOwnershipFragment())
+            addToBackStack("request")
+        }
+    }
+
+    fun navigateToBalance() {
+        supportFragmentManager.commit {
+            replace(R.id.fragmentContainer, BalanceFragment())
+            addToBackStack("balance")
         }
     }
 

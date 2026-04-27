@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal"
+    android:background="@color/white">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Transfer Ownership"
+        android:textSize="24sp"
+        android:textColor="#000000"
+        android:textStyle="bold"
+        android:layout_marginBottom="24dp" />
+
+    <EditText
+        android:id="@+id/etAssetId"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Asset ID (pHash)"
+        android:inputType="text"
+        android:layout_marginBottom="16dp" />
+
+    <EditText
+        android:id="@+id/etNewOwnerAddress"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="New Owner Wallet Address"
+        android:inputType="text"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/btnTransfer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Transfer Asset"
+        android:backgroundTint="@color/purple_500"
+        android:textColor="@color/white" />
+</LinearLayout>

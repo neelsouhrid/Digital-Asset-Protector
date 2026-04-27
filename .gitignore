@@ -23,6 +23,8 @@ credentials.json
 *.pem
 *.key
 .credentials
+keystore.properties
+*.jks
 
 # Build directories
 app/build/

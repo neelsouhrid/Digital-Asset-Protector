@@ -33,7 +33,7 @@
                     android:text="Asset Vault"
                     android:textColor="@color/white"
                     android:textSize="24sp"
-                    android:textStyle="bold"
+                    android:fontFamily="@font/oi_regular"
                     app:layout_constraintTop_toTopOf="parent"
                     app:layout_constraintStart_toStartOf="parent"/>
 
