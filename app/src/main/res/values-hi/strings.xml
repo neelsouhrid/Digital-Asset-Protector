@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ऐसेट वॉल्ट</string>
+    <string name="add_asset">संपत्ति जोड़ें</string>
+    <string name="add_photo">फोटो जोड़ें</string>
+    <string name="select_file">फ़ाइल चुनें</string>
+    <string name="my_vault">मेरा वॉल्ट</string>
+    <string name="protected_assets">सुरक्षित संपत्तियां</string>
+    <string name="asset_details">संपत्ति का विवरण</string>
+    <string name="mint_protect">सुरक्षित करें</string>
+    <string name="verify">सत्यापित करें</string>
+    <string name="back">वापस</string>
+    <string name="sign_in_tagline">ब्लॉकचेन के साथ अपनी डिजिटल संपत्तियों की सुरक्षा करें</string>
+    <string name="welcome_home">स्वागत है</string>
+    <string name="protect_single">विशिष्ट फोटो सुरक्षित करें</string>
+    <string name="protect_library">मेरी गैलरी सुरक्षित करें</string>
+    <string name="view_vault">वॉल्ट देखें</string>
+    <string name="done">हो गया</string>
+    <string name="protect_asset">संपत्ति को सुरक्षित करें</string>
+</resources>

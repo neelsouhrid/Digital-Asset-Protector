@@ -20,6 +20,30 @@ class TransferOwnershipFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        binding.toolbar.setNavigationOnClickListener {
+            requireActivity().supportFragmentManager.popBackStack()
+        }
+
+        binding.tabLayout.addOnTabSelectedListener(object : com.google.android.material.tabs.TabLayout.OnTabSelectedListener {
+            override fun onTabSelected(tab: com.google.android.material.tabs.TabLayout.Tab?) {
+                when (tab?.position) {
+                    0 -> {
+                        binding.layoutTransfer.visibility = View.VISIBLE
+                        binding.layoutRequests.visibility = View.GONE
+                    }
+                    1 -> {
+                        binding.layoutTransfer.visibility = View.GONE
+                        binding.layoutRequests.visibility = View.VISIBLE
+                        // TODO: Load requests into RecyclerView
+                        binding.tvEmptyRequests.visibility = View.VISIBLE // mock empty state
+                    }
+                }
+            }
+            override fun onTabUnselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+            override fun onTabReselected(tab: com.google.android.material.tabs.TabLayout.Tab?) {}
+        })
+
         binding.btnTransfer.setOnClickListener {
             val assetId = binding.etAssetId.text.toString().trim()
             val newOwner = binding.etNewOwnerAddress.text.toString().trim()
@@ -29,7 +53,6 @@ class TransferOwnershipFragment : Fragment() {
                 return@setOnClickListener
             }
             
-            // Mocking transfer since smart contract doesn't have it yet
             Toast.makeText(requireContext(), "Ownership transfer initiated for \n$assetId\n to \n$newOwner", Toast.LENGTH_LONG).show()
             binding.etAssetId.text.clear()
             binding.etNewOwnerAddress.text.clear()

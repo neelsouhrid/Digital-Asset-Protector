@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">असेट व्हॉल्ट</string>
+    <string name="add_asset">मालमत्ता जोडा</string>
+    <string name="add_photo">फोटो जोडा</string>
+    <string name="select_file">फाईल निवडा</string>
+    <string name="my_vault">माझे व्हॉल्ट</string>
+    <string name="protected_assets">सुरक्षित मालमत्ता</string>
+    <string name="asset_details">मालमत्तेचा तपशील</string>
+    <string name="mint_protect">संरक्षित करा</string>
+    <string name="verify">पडताळणी करा</string>
+    <string name="back">मागे</string>
+    <string name="sign_in_tagline">ब्लॉकचेनसह तुमची डिजिटल मालमत्ता सुरक्षित करा</string>
+    <string name="welcome_home">स्वागत आहे</string>
+    <string name="protect_single">विशिष्ट फोटो संरक्षित करा</string>
+    <string name="protect_library">माझी लायब्ररी संरक्षित करा</string>
+    <string name="view_vault">व्हॉल्ट पहा</string>
+    <string name="done">झाले</string>
+    <string name="protect_asset">मालमत्ता सुरक्षित करा</string>
+</resources>

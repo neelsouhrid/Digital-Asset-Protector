@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">অ্যাসেট ভল্ট</string>
+    <string name="add_asset">সম্পদ যোগ করুন</string>
+    <string name="add_photo">ছবি যোগ করুন</string>
+    <string name="select_file">ফাইল নির্বাচন করুন</string>
+    <string name="my_vault">আমার ভল্ট</string>
+    <string name="protected_assets">সুরক্ষিত সম্পদ</string>
+    <string name="asset_details">সম্পদের বিবরণ</string>
+    <string name="mint_protect">সুরক্ষিত করুন</string>
+    <string name="verify">যাচাই করুন</string>
+    <string name="back">ফিরে যান</string>
+    <string name="sign_in_tagline">ব্লকচেইনের মাধ্যমে আপনার ডিজিটাল সম্পদ সুরক্ষিত করুন</string>
+    <string name="welcome_home">স্বাগতম</string>
+    <string name="protect_single">নির্দিষ্ট ছবি সুরক্ষিত করুন</string>
+    <string name="protect_library">আমার গ্যালারি সুরক্ষিত করুন</string>
+    <string name="view_vault">ভল্ট দেখুন</string>
+    <string name="done">সম্পন্ন</string>
+    <string name="protect_asset">সম্পদ সুরক্ষিত করুন</string>
+</resources>

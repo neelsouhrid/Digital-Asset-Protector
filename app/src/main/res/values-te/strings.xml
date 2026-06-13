@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">అసెట్ వాల్ట్</string>
+    <string name="add_asset">ఆస్తిని జోడించండి</string>
+    <string name="add_photo">ఫోటో జోడించండి</string>
+    <string name="select_file">ఫైల్ ఎంచుకోండి</string>
+    <string name="my_vault">నా వాల్ట్</string>
+    <string name="protected_assets">సురక్షిత ఆస్తులు</string>
+    <string name="asset_details">ఆస్తి వివరాలు</string>
+    <string name="mint_protect">రక్షించండి</string>
+    <string name="verify">ధృవీకరించండి</string>
+    <string name="back">వెనుకకు</string>
+    <string name="sign_in_tagline">బ్లాక్‌చెయిన్‌తో మీ డిజిటల్ ఆస్తులను రక్షించండి</string>
+    <string name="welcome_home">స్వాగతం</string>
+    <string name="protect_single">నిర్దిష్ట ఫోటోను రక్షించండి</string>
+    <string name="protect_library">నా లైబ్రరీని రక్షించండి</string>
+    <string name="view_vault">వాల్ట్ చూడండి</string>
+    <string name="done">పూర్తయింది</string>
+    <string name="protect_asset">ఆస్తిని రక్షించండి</string>
+</resources>

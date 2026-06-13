@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.View
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -48,10 +49,26 @@ class MainActivity : AppCompatActivity() {
         initializeBlockchain()
         setupHeaderAndDrawer()
         setupBottomNavigation()
+        purgeOldChats()
+
+        // We no longer automatically hide the navbar just because we entered GeminiChatFragment.
+        // Instead, we hide it when the keyboard opens, anywhere in the app.
+        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { _, insets ->
+            val isKeyboardVisible = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
+            setNavbarVisible(!isKeyboardVisible)
+            insets
+        }
 
         if (savedInstanceState == null) {
             showHomeFragment()
         }
+    }
+
+    /** Show or hide the bottom navbar and Gemini FAB (e.g. hide when inside Gemini chat). */
+    fun setNavbarVisible(show: Boolean) {
+        val visibility = if (show) android.view.View.VISIBLE else android.view.View.GONE
+        binding.bottomNavCard.visibility = visibility
+        binding.fabGemini.visibility = visibility
     }
 
     private fun requestNecessaryPermissions() {
@@ -140,14 +157,43 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Setup notification badge for Transfer Ownership requests
+        val transferMenuItem = binding.navigationView.menu.findItem(R.id.nav_transfer_ownership)
+        val actionView = transferMenuItem.actionView
+        val tvBadge = actionView?.findViewById<TextView>(R.id.tvBadge)
+        if (tvBadge != null) {
+            // Mocking 2 pending requests
+            val pendingRequests = 2
+            if (pendingRequests > 0) {
+                tvBadge.text = pendingRequests.toString()
+                tvBadge.visibility = View.VISIBLE
+            } else {
+                tvBadge.visibility = View.GONE
+            }
+        }
+
         // Drawer Item Clicks
         binding.navigationView.setNavigationItemSelectedListener { item ->
             when (item.itemId) {
-                R.id.nav_profile -> { /* TODO */ }
+                R.id.nav_profile -> { navigateToProfile() }
                 R.id.nav_protected_assets -> { navigateToVault() }
-                R.id.nav_sightings_map -> { /* TODO: OpenStreetMap fragment */ }
+                R.id.nav_sightings_map -> {
+                    updateNavbarSelection(R.id.navMap)
+                    supportFragmentManager.commit {
+                        replace(R.id.fragmentContainer, MapFragment())
+                        addToBackStack(null)
+                    }
+                }
+                R.id.nav_raise_ticket -> {
+                    supportFragmentManager.commit {
+                        replace(R.id.fragmentContainer, TicketFragment())
+                        addToBackStack("ticket")
+                    }
+                    updateNavbarSelection(-1)
+                }
                 R.id.nav_transfer_ownership -> { navigateToTransferOwnership() }
                 R.id.nav_request_ownership -> { navigateToRequestOwnership() }
+                R.id.nav_gemini_history -> { navigateToGeminiChat() }
                 R.id.nav_balance -> { navigateToBalance() }
                 R.id.nav_signout -> performSignOut()
             }
@@ -166,9 +212,36 @@ class MainActivity : AppCompatActivity() {
         binding.navVault.setOnClickListener {
             navigateToVault()
         }
+        binding.navMap.setOnClickListener {
+            updateNavbarSelection(R.id.navMap)
+            supportFragmentManager.commit {
+                replace(R.id.fragmentContainer, MapFragment())
+                addToBackStack(null)
+            }
+        }
         binding.navMenu.setOnClickListener {
             updateNavbarSelection(R.id.navMenu)
             binding.drawerLayout.open()
+        }
+        binding.fabGemini.setOnClickListener {
+            navigateToGeminiChat()
+        }
+    }
+
+    private fun navigateToGeminiChat() {
+        // Reuse existing session if already in back stack — never create a new one each time
+        val existing = supportFragmentManager.findFragmentByTag("gemini_chat")
+        if (existing != null && existing.isAdded) {
+            supportFragmentManager.popBackStack(
+                "gemini_chat",
+                0
+            )
+        } else {
+            supportFragmentManager.commit {
+                setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                replace(R.id.fragmentContainer, GeminiChatFragment(), "gemini_chat")
+                addToBackStack("gemini_chat")
+            }
         }
     }
 
@@ -207,6 +280,7 @@ class MainActivity : AppCompatActivity() {
         val navItems = listOf(
             binding.navHome to R.id.navHome,
             binding.navUpload to R.id.navUpload,
+            binding.navMap to R.id.navMap,
             binding.navVault to R.id.navVault,
             binding.navMenu to R.id.navMenu
         )
@@ -288,6 +362,13 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun navigateToProfile() {
+        supportFragmentManager.commit {
+            replace(R.id.fragmentContainer, ProfileFragment())
+            addToBackStack("profile")
+        }
+    }
+
     fun navigateToAssetDetail(assetId: Long) {
         supportFragmentManager.commit {
             replace(R.id.fragmentContainer, AssetDetailFragment.newInstance(assetId))
@@ -319,5 +400,19 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         BlockchainManager.shutdown()
+    }
+
+    /** Deletes chat sessions (and their messages cascade) older than 30 days. Runs silently in background. */
+    private fun purgeOldChats() {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val cutoff = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
+                val db = com.assetvault.data.AppDatabase.getInstance(this@MainActivity)
+                db.chatDao().deleteOldSessions(cutoff)
+                android.util.Log.d("MainActivity", "Old chat sessions purged (cutoff: $cutoff)")
+            } catch (e: Exception) {
+                android.util.Log.e("MainActivity", "Chat purge failed", e)
+            }
+        }
     }
 }

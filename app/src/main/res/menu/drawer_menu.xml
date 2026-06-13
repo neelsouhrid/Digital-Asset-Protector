@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/nav_profile"
@@ -16,12 +17,26 @@
         <item
             android:id="@+id/nav_transfer_ownership"
             android:icon="@android:drawable/ic_menu_send"
+            app:actionLayout="@layout/menu_dot_badge"
             android:title="Transfer Ownership" />
         <item
             android:id="@+id/nav_request_ownership"
             android:icon="@android:drawable/ic_menu_add"
             android:title="Request Ownership" />
     </group>
+    
+    <item android:title="Help &amp; Support">
+        <menu>
+            <item
+                android:id="@+id/nav_gemini_history"
+                android:icon="@android:drawable/ic_menu_recent_history"
+                android:title="Chat History" />
+            <item
+                android:id="@+id/nav_raise_ticket"
+                android:icon="@android:drawable/ic_menu_help"
+                android:title="Raise Ticket" />
+        </menu>
+    </item>
     
     <item android:title="Wallet &amp; Crypto">
         <menu>

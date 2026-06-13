@@ -2,6 +2,14 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'com.google.devtools.ksp'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.21'
+}
+
+// Load local properties
+def localPropertiesFile = rootProject.file("local.properties")
+def localProperties = new Properties()
+if (localPropertiesFile.exists()) {
+    localProperties.load(new FileInputStream(localPropertiesFile))
 }
 
 // Load keystore properties
@@ -32,6 +40,10 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        
+        buildConfigField "String", "GEMINI_API_KEY", "\"${localProperties['GEMINI_API_KEY'] ?: ''}\""
+        buildConfigField "String", "SUPABASE_URL", "\"${localProperties['SUPABASE_URL'] ?: ''}\""
+        buildConfigField "String", "SUPABASE_KEY", "\"${localProperties['SUPABASE_KEY'] ?: ''}\""
     }
 
     buildTypes {
@@ -54,6 +66,7 @@ android {
 
     buildFeatures {
         viewBinding true
+        buildConfig true
     }
 }
 
@@ -106,6 +119,18 @@ dependencies {
 
     // Google Sign-In
     implementation 'com.google.android.gms:play-services-auth:20.7.0'
+
+    // Gemini AI SDK
+    implementation 'com.google.ai.client.generativeai:generativeai:0.9.0'
+
+    // OpenStreetMap (osmdroid) for Map fragment
+    implementation 'org.osmdroid:osmdroid-android:6.1.18'
+
+    // Supabase
+    implementation 'io.github.jan-tennert.supabase:postgrest-kt:2.2.3'
+    implementation 'io.github.jan-tennert.supabase:storage-kt:2.2.3'
+    implementation 'io.ktor:ktor-client-android:2.3.9'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0'
 
     // Testing
     testImplementation 'junit:junit:4.13.2'

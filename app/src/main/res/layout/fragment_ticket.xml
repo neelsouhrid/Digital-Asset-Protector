@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/background"
+        app:title="Raise Ticket"
+        app:titleTextColor="@color/text_primary"
+        app:navigationIcon="@drawable/ic_back"
+        app:layout_constraintTop_toTopOf="parent"/>
+
+    <EditText
+        android:id="@+id/etIssueDescription"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_margin="16dp"
+        android:background="@color/surface"
+        android:gravity="top|start"
+        android:hint="Describe your concern here..."
+        android:inputType="textMultiLine"
+        android:padding="16dp"
+        android:textColor="@color/text_primary"
+        android:textColorHint="@color/text_secondary"
+        app:layout_constraintBottom_toTopOf="@id/ivAttachment"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        app:layout_constraintVertical_weight="1" />
+
+    <ImageView
+        android:id="@+id/ivAttachment"
+        android:layout_width="120dp"
+        android:layout_height="120dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/surface"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/btnAttachPhoto"
+        app:layout_constraintStart_toStartOf="parent"
+        tools:src="@drawable/ic_image_placeholder"
+        tools:visibility="visible" />
+
+    <ImageButton
+        android:id="@+id/btnRemoveAttachment"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginTop="-12dp"
+        android:layout_marginEnd="-12dp"
+        android:background="@drawable/badge_background"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        android:tint="@android:color/white"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/ivAttachment"
+        app:layout_constraintTop_toTopOf="@id/ivAttachment"
+        tools:visibility="visible" />
+
+    <Button
+        android:id="@+id/btnAttachPhoto"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="8dp"
+        android:text="Attach Photograph"
+        android:textColor="@color/primary"
+        app:icon="@android:drawable/ic_menu_camera"
+        app:iconTint="@color/primary"
+        app:layout_constraintBottom_toTopOf="@id/btnSubmitTicket"
+        app:strokeColor="@color/primary" />
+
+    <Button
+        android:id="@+id/btnSubmitTicket"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginBottom="24dp"
+        android:backgroundTint="@color/primary"
+        android:text="Submit Ticket"
+        android:textColor="@android:color/white"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

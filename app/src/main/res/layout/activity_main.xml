@@ -91,6 +91,7 @@
 
         <!-- Floating Bottom Navbar -->
         <androidx.cardview.widget.CardView
+            android:id="@+id/bottomNavCard"
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:layout_gravity="bottom"
@@ -155,6 +156,31 @@
                         android:textStyle="bold"/>
                 </LinearLayout>
 
+                <!-- Map -->
+                <LinearLayout
+                    android:id="@+id/navMap"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:orientation="vertical"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:clickable="true"
+                    android:focusable="true">
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@android:drawable/ic_dialog_map"
+                        app:tint="@color/purple_700"/>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Map"
+                        android:textSize="10sp"
+                        android:textColor="@color/purple_700"
+                        android:textStyle="bold"/>
+                </LinearLayout>
+
                 <!-- Vault -->
                 <LinearLayout
                     android:id="@+id/navVault"
@@ -207,6 +233,19 @@
 
             </LinearLayout>
         </androidx.cardview.widget.CardView>
+
+        <!-- Gemini AI Floating Button -->
+        <com.google.android.material.floatingactionbutton.FloatingActionButton
+            android:id="@+id/fabGemini"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="16dp"
+            android:layout_marginBottom="96dp"
+            android:src="@drawable/ic_gemini"
+            app:backgroundTint="@color/purple_500"
+            app:tint="@color/white"
+            android:contentDescription="Gemini AI Assistant"/>
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

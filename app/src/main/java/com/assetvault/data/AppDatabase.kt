@@ -5,18 +5,23 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
+import com.assetvault.data.chat.ChatDao
+import com.assetvault.data.chat.ChatMessageEntity
+import com.assetvault.data.chat.ChatSessionEntity
+
 /**
- * AppDatabase - Module 3
- * Room database storing URI, hex vector, pHash, and blockchain status.
+ * AppDatabase - Module 3 & Chat
+ * Room database storing URI, hex vector, pHash, blockchain status, and Chat history.
  */
 @Database(
-    entities = [SignatureEntity::class],
-    version = 3,
+    entities = [SignatureEntity::class, ChatSessionEntity::class, ChatMessageEntity::class],
+    version = 4,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun signatureDao(): SignatureDao
+    abstract fun chatDao(): ChatDao
 
     companion object {
         @Volatile

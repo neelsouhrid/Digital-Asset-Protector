@@ -1,42 +1,108 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center_horizontal"
-    android:background="@color/white">
+    android:background="@color/background">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Transfer Ownership"
-        android:textSize="24sp"
-        android:textColor="#000000"
-        android:textStyle="bold"
-        android:layout_marginBottom="24dp" />
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        android:background="@color/background"
+        app:title="Ownership"
+        app:titleTextColor="@color/text_primary"
+        app:navigationIcon="@drawable/ic_back"
+        app:layout_constraintTop_toTopOf="parent"/>
 
-    <EditText
-        android:id="@+id/etAssetId"
+    <com.google.android.material.tabs.TabLayout
+        android:id="@+id/tabLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Asset ID (pHash)"
-        android:inputType="text"
-        android:layout_marginBottom="16dp" />
+        android:background="@color/background"
+        app:tabTextColor="@color/text_secondary"
+        app:tabSelectedTextColor="@color/primary"
+        app:tabIndicatorColor="@color/purple_500"
+        app:layout_constraintTop_toBottomOf="@id/toolbar">
 
-    <EditText
-        android:id="@+id/etNewOwnerAddress"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="New Owner Wallet Address"
-        android:inputType="text"
-        android:layout_marginBottom="24dp" />
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Transfer" />
 
-    <Button
-        android:id="@+id/btnTransfer"
+        <com.google.android.material.tabs.TabItem
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Requests" />
+    </com.google.android.material.tabs.TabLayout>
+
+    <!-- Transfer Tab Content -->
+    <LinearLayout
+        android:id="@+id/layoutTransfer"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Transfer Asset"
-        android:backgroundTint="@color/purple_500"
-        android:textColor="@color/white" />
-</LinearLayout>
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:padding="24dp"
+        android:visibility="visible"
+        app:layout_constraintTop_toBottomOf="@id/tabLayout"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <EditText
+            android:id="@+id/etAssetId"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Asset ID (pHash)"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            android:backgroundTint="@color/purple_500"
+            android:layout_marginBottom="16dp" />
+
+        <EditText
+            android:id="@+id/etNewOwnerAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="New Owner Wallet Address"
+            android:textColor="@color/text_primary"
+            android:textColorHint="@color/text_secondary"
+            android:backgroundTint="@color/purple_500"
+            android:layout_marginBottom="24dp" />
+
+        <Button
+            android:id="@+id/btnTransfer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Transfer Asset"
+            android:backgroundTint="@color/purple_500"
+            android:textColor="@color/white" />
+    </LinearLayout>
+
+    <!-- Requests Tab Content -->
+    <LinearLayout
+        android:id="@+id/layoutRequests"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/tabLayout"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvRequests"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            tools:listitem="@layout/item_ownership_request"/>
+            
+        <TextView
+            android:id="@+id/tvEmptyRequests"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:text="No pending requests"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone"/>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
