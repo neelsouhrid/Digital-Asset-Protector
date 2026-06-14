@@ -38,4 +38,7 @@ interface SignatureDao {
 
     @Query("SELECT * FROM signatures WHERE status = :status")
     suspend fun getByStatus(status: String): List<SignatureEntity>
+
+    @Query("SELECT * FROM signatures WHERE pHash = :pHash LIMIT 1")
+    suspend fun getByPHash(pHash: String): SignatureEntity?
 }

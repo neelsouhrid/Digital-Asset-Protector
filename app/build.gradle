@@ -2,7 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'com.google.devtools.ksp'
-    id 'org.jetbrains.kotlin.plugin.serialization' version '1.8.21'
+    id 'org.jetbrains.kotlin.plugin.serialization' version '1.9.20'
 }
 
 // Load local properties
@@ -44,6 +44,11 @@ android {
         buildConfigField "String", "GEMINI_API_KEY", "\"${localProperties['GEMINI_API_KEY'] ?: ''}\""
         buildConfigField "String", "SUPABASE_URL", "\"${localProperties['SUPABASE_URL'] ?: ''}\""
         buildConfigField "String", "SUPABASE_KEY", "\"${localProperties['SUPABASE_KEY'] ?: ''}\""
+        buildConfigField "String", "SUPABASE_SERVICE_KEY", "\"${localProperties['SUPABASE_SERVICE_KEY'] ?: ''}\""
+        buildConfigField "String", "CLOUDINARY_CLOUD_NAME", "\"${localProperties['CLOUDINARY_CLOUD_NAME'] ?: ''}\""
+        buildConfigField "String", "CLOUDINARY_API_KEY", "\"${localProperties['CLOUDINARY_API_KEY'] ?: ''}\""
+        buildConfigField "String", "CLOUDINARY_API_SECRET", "\"${localProperties['CLOUDINARY_API_SECRET'] ?: ''}\""
+        buildConfigField "String", "CLOUDINARY_UPLOAD_PRESET", "\"${localProperties['CLOUDINARY_UPLOAD_PRESET'] ?: ''}\""
     }
 
     buildTypes {

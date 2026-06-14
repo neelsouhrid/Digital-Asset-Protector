@@ -42,4 +42,45 @@
     <string name="enforcement_inactive">Tap \"Protect Asset\" to enforce protection on sighting devices</string>
     <string name="sighting_enforced">⚠️ This image is protected. The owner has enforced protection.</string>
     <string name="sighting_not_enforced">This image was found in the system but the owner has not yet enforced protection.</string>
+
+    <!-- Bottom Nav -->
+    <string name="nav_home">Home</string>
+    <string name="nav_upload">Upload</string>
+    <string name="nav_map">Map</string>
+    <string name="nav_vault">Vault</string>
+    <string name="nav_menu">Menu</string>
+
+    <!-- Drawer Menu -->
+    <string name="menu_profile">Profile</string>
+    <string name="menu_protected_assets">Protected Assets</string>
+    <string name="menu_sightings_map">Sightings Map</string>
+    <string name="menu_transfer_ownership">Transfer Ownership</string>
+    <string name="menu_request_ownership">Request Ownership</string>
+    <string name="menu_group_help">Help &amp; Support</string>
+    <string name="menu_chat_history">Chat History</string>
+    <string name="menu_raise_ticket">Raise Ticket</string>
+    <string name="menu_group_wallet">Wallet &amp; Crypto</string>
+    <string name="menu_wallet_balance">Wallet Balance</string>
+    <string name="menu_group_account">Account</string>
+    <string name="menu_change_language">Change Language</string>
+    <string name="menu_admin_panel">Admin Panel</string>
+    <string name="menu_sign_out">Sign Out</string>
+
+    <!-- Ownership &amp; Transfer -->
+    <string name="transfer_ownership">Transfer Ownership</string>
+    <string name="generate_dmca">Generate DMCA Template</string>
+    <string name="collaborative_ownership">Collaborative Ownership</string>
+    <string name="collaborative_ownership_desc">Both owners share rights. Original owner is not removed.</string>
+    <string name="transfer_request_sent">Transfer request sent! The recipient will be notified.</string>
+    <string name="transfer_request_approved">Ownership transferred successfully!</string>
+    <string name="transfer_request_rejected">Transfer request rejected.</string>
+    <string name="enter_recipient_email">Enter recipient&#8217;s email address</string>
+    <string name="enter_wallet_address">Enter recipient&#8217;s wallet address</string>
+    <string name="resolving_email">Resolving email&#8230;</string>
+    <string name="email_not_found">No user found for this wallet address</string>
+    <string name="no_pending_requests">No pending ownership requests</string>
+    <string name="request_ownership_title">Request Ownership</string>
+    <string name="request_asset_hash">Enter asset pHash or ID to request ownership</string>
+    <string name="send_request">Send Request</string>
+
 </resources>

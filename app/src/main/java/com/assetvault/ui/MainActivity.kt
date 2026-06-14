@@ -19,6 +19,7 @@ import com.assetvault.data.SecurePreferences
 import com.assetvault.databinding.ActivityMainBinding
 import com.assetvault.network.BlockchainManager
 import com.assetvault.network.CloudApiClient
+import com.assetvault.network.SupabaseManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -57,6 +58,15 @@ class MainActivity : AppCompatActivity() {
             val isKeyboardVisible = insets.isVisible(androidx.core.view.WindowInsetsCompat.Type.ime())
             setNavbarVisible(!isKeyboardVisible)
             insets
+        }
+        
+        supportFragmentManager.addOnBackStackChangedListener {
+            val currentFragment = supportFragmentManager.findFragmentById(R.id.fragmentContainer)
+            if (currentFragment is GeminiChatFragment) {
+                binding.fabGemini.visibility = View.GONE
+            } else {
+                binding.fabGemini.visibility = View.VISIBLE
+            }
         }
 
         if (savedInstanceState == null) {
@@ -137,9 +147,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        binding.ivSignOut.setOnClickListener {
-            performSignOut()
-        }
+
 
         // Nav Header
         val navHeader = binding.navigationView.getHeaderView(0)
@@ -162,13 +170,16 @@ class MainActivity : AppCompatActivity() {
         val actionView = transferMenuItem.actionView
         val tvBadge = actionView?.findViewById<TextView>(R.id.tvBadge)
         if (tvBadge != null) {
-            // Mocking 2 pending requests
-            val pendingRequests = 2
-            if (pendingRequests > 0) {
-                tvBadge.text = pendingRequests.toString()
-                tvBadge.visibility = View.VISIBLE
-            } else {
-                tvBadge.visibility = View.GONE
+            CoroutineScope(Dispatchers.IO).launch {
+                val pendingRequests = SupabaseManager.countPendingTransferRequests(email)
+                runOnUiThread {
+                    if (pendingRequests > 0) {
+                        tvBadge.text = pendingRequests.toString()
+                        tvBadge.visibility = View.VISIBLE
+                    } else {
+                        tvBadge.visibility = View.GONE
+                    }
+                }
             }
         }
 
@@ -195,10 +206,53 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_request_ownership -> { navigateToRequestOwnership() }
                 R.id.nav_gemini_history -> { navigateToGeminiChat() }
                 R.id.nav_balance -> { navigateToBalance() }
+                R.id.nav_language -> { showLanguageDialog() }
+                R.id.nav_admin -> { navigateToAdmin() }
                 R.id.nav_signout -> performSignOut()
             }
             binding.drawerLayout.close()
             true
+        }
+        
+        // Check if user is admin
+        checkAdminStatus(email)
+    }
+    
+    private fun checkAdminStatus(email: String) {
+        // Query Supabase for admin status
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val isAdmin = SupabaseManager.isUserAdmin(email)
+                runOnUiThread {
+                    android.widget.Toast.makeText(this@MainActivity, "Admin check for $email: $isAdmin", android.widget.Toast.LENGTH_LONG).show()
+                    if (isAdmin) {
+                        binding.navigationView.menu.findItem(R.id.nav_admin)?.isVisible = true
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore
+            }
+        }
+    }
+
+    private fun showLanguageDialog() {
+        val languages = arrayOf("English", "Hindi", "Bengali", "Telugu", "Marathi")
+        val locales = arrayOf("en", "hi", "bn", "te", "mr")
+        
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Select Language")
+            .setItems(languages) { _, which ->
+                val locale = locales[which]
+                val appLocale = androidx.core.os.LocaleListCompat.forLanguageTags(locale)
+                androidx.appcompat.app.AppCompatDelegate.setApplicationLocales(appLocale)
+            }
+            .show()
+    }
+
+    private fun navigateToAdmin() {
+        supportFragmentManager.commit {
+            replace(R.id.fragmentContainer, AdminPanelFragment())
+            addToBackStack("admin")
         }
     }
 

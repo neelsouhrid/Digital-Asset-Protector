@@ -9,14 +9,17 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.assetvault.data.AppDatabase
+import com.assetvault.data.SecurePreferences
 import com.assetvault.data.SignatureEntity
 import com.assetvault.databinding.FragmentVaultBinding
 import com.assetvault.network.CloudApiClient
+import com.assetvault.network.SupabaseManager
 import kotlinx.coroutines.launch
 
 /**
  * VaultFragment - Module 3
  * Displays list of user-added protected assets with status badges.
+ * Syncs from Supabase cloud if local DB is empty (e.g. after reinstall).
  * Syncs enforcement status for sighting items on load.
  */
 class VaultFragment : Fragment() {
@@ -65,9 +68,16 @@ class VaultFragment : Fragment() {
     private fun loadAssets() {
         viewLifecycleOwner.lifecycleScope.launch {
             val db = AppDatabase.getInstance(requireContext())
-            val prefs = com.assetvault.data.SecurePreferences.getInstance(requireContext())
+            val prefs = SecurePreferences.getInstance(requireContext())
             val currentUser = prefs.getOwnerId()
-            val assets = db.signatureDao().getByOwnerEmail(currentUser)
+            var assets = db.signatureDao().getByOwnerEmail(currentUser)
+
+            // If local DB is empty, try to sync from Supabase
+            if (assets.isEmpty()) {
+                Log.d(TAG, "Local vault is empty. Attempting cloud sync from Supabase...")
+                syncFromCloud(db, currentUser)
+                assets = db.signatureDao().getByOwnerEmail(currentUser)
+            }
 
             if (assets.isEmpty()) {
                 binding.tvEmptyState.visibility = View.VISIBLE
@@ -83,6 +93,44 @@ class VaultFragment : Fragment() {
                 val refreshed = db.signatureDao().getByOwnerEmail(currentUser)
                 adapter.submitList(refreshed)
             }
+        }
+    }
+
+    /**
+     * Fetches assets from Supabase `assets` table for the current user
+     * and inserts them into the local Room database.
+     * This handles the case where the app is reinstalled but cloud data persists.
+     */
+    private suspend fun syncFromCloud(db: AppDatabase, currentUser: String) {
+        try {
+            val email = SecurePreferences.getInstance(requireContext()).getGoogleEmail() ?: return
+            val cloudAssets = SupabaseManager.fetchUserAssets(email)
+
+            if (cloudAssets.isNotEmpty()) {
+                Log.d(TAG, "Found ${cloudAssets.size} cloud assets. Syncing to local DB...")
+                for (record in cloudAssets) {
+                    // Check if already exists locally
+                    val existing = db.signatureDao().getByPHash(record.hash)
+                    if (existing == null) {
+                        val entity = SignatureEntity(
+                            uri = record.storage_path ?: "",
+                            hexVector = "",
+                            pHash = record.hash,
+                            timestamp = System.currentTimeMillis(),
+                            blockchainTxId = record.blockchain_tx,
+                            status = if (record.status == "leaked") "SIGHTING" else "PROTECTED",
+                            ownerEmail = currentUser,
+                            isEnforced = record.is_enforced
+                        )
+                        db.signatureDao().insert(entity)
+                        Log.d(TAG, "Synced cloud asset: ${record.hash.take(16)}...")
+                    }
+                }
+            } else {
+                Log.d(TAG, "No cloud assets found for $email")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Cloud sync failed: ${e.message}", e)
         }
     }
 

@@ -48,24 +48,47 @@
         app:layout_constraintTop_toBottomOf="@id/tabLayout"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <EditText
-            android:id="@+id/etAssetId"
+        <Spinner
+            android:id="@+id/spinnerAssets"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Asset ID (pHash)"
-            android:textColor="@color/text_primary"
-            android:textColorHint="@color/text_secondary"
             android:backgroundTint="@color/purple_500"
-            android:layout_marginBottom="16dp" />
+            android:layout_marginBottom="16dp"
+            android:prompt="@string/select_file" />
 
         <EditText
             android:id="@+id/etNewOwnerAddress"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="New Owner Wallet Address"
+            android:hint="@string/enter_wallet_address"
             android:textColor="@color/text_primary"
             android:textColorHint="@color/text_secondary"
             android:backgroundTint="@color/purple_500"
+            android:layout_marginBottom="8dp" />
+
+        <TextView
+            android:id="@+id/tvResolvedEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp" />
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchCollaborative"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/collaborative_ownership"
+            android:textColor="@color/text_primary"
+            android:layout_marginBottom="4dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/collaborative_ownership_desc"
+            android:textSize="11sp"
+            android:textColor="@color/text_secondary"
             android:layout_marginBottom="24dp" />
 
         <Button

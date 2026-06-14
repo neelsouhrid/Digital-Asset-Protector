@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import com.assetvault.data.SecurePreferences
 import com.assetvault.databinding.FragmentTicketBinding
 import com.assetvault.network.SupabaseManager
 import kotlinx.coroutines.launch
@@ -65,10 +66,20 @@ class TicketFragment : Fragment() {
         binding.progressBar.visibility = View.VISIBLE
         binding.btnSubmitTicket.isEnabled = false
         
+        val prefs = SecurePreferences.getInstance(requireContext())
+        val email = prefs.getGoogleEmail() ?: "unknown@email.com"
+        val name = prefs.getGoogleDisplayName()
+
         lifecycleScope.launch {
             try {
-                // Submit to Supabase
-                val success = SupabaseManager.submitTicket(requireContext(), issue, imageUri)
+                val success = SupabaseManager.submitTicket(
+                    context = requireContext(),
+                    issue = issue,
+                    imageUri = imageUri,
+                    userEmail = email,
+                    userName = name,
+                    raisedByGemini = false
+                )
                 
                 if (success) {
                     Toast.makeText(requireContext(), "Ticket submitted successfully!", Toast.LENGTH_LONG).show()

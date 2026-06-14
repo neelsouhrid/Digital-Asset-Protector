@@ -203,10 +203,21 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Transfer Ownership"
-            android:visibility="visible"
+            android:text="@string/transfer_ownership"
+            android:visibility="gone"
             app:icon="@android:drawable/ic_menu_send"
             app:backgroundTint="@color/purple_700"/>
+
+        <!-- Generate DMCA Template Button -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnDmca"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/generate_dmca"
+            android:visibility="gone"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            app:icon="@android:drawable/ic_menu_share"/>
 
     </LinearLayout>
 

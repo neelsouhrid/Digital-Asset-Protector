@@ -61,15 +61,6 @@
                     app:layout_constraintBottom_toBottomOf="parent">
                     
                     <ImageView
-                        android:id="@+id/ivSignOut"
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@android:drawable/ic_lock_power_off"
-                        app:tint="@color/white"
-                        android:layout_marginEnd="12dp"
-                        android:contentDescription="Sign Out" />
-
-                    <ImageView
                         android:id="@+id/ivProfile"
                         android:layout_width="40dp"
                         android:layout_height="40dp"
@@ -125,7 +116,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Home"
+                        android:text="@string/nav_home"
                         android:textSize="10sp"
                         android:textColor="@color/purple_700"
                         android:textStyle="bold"/>
@@ -150,7 +141,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Upload"
+                        android:text="@string/nav_upload"
                         android:textSize="10sp"
                         android:textColor="@color/purple_700"
                         android:textStyle="bold"/>
@@ -175,7 +166,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Map"
+                        android:text="@string/nav_map"
                         android:textSize="10sp"
                         android:textColor="@color/purple_700"
                         android:textStyle="bold"/>
@@ -200,7 +191,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Vault"
+                        android:text="@string/nav_vault"
                         android:textSize="10sp"
                         android:textColor="@color/purple_700"
                         android:textStyle="bold"/>
@@ -225,7 +216,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Menu"
+                        android:text="@string/nav_menu"
                         android:textSize="10sp"
                         android:textColor="@color/purple_700"
                         android:textStyle="bold"/>

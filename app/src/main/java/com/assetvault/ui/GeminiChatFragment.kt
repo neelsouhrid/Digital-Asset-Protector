@@ -168,7 +168,18 @@ Available tools:
                                         finalReply = "I have queued your support ticket: \"$issue\". You can also raise tickets manually from the 'Raise Ticket' menu option."
                                         // Bonus: Can actually insert into Supabase here
                                         launch(Dispatchers.IO) {
-                                            com.assetvault.network.SupabaseManager.submitTicket(requireContext(), issue, null)
+                                            val prefs = com.assetvault.data.SecurePreferences.getInstance(requireContext())
+                                            val email = prefs.getGoogleEmail() ?: "gemini_agent@system.local"
+                                            val name = prefs.getGoogleDisplayName() ?: "Gemini Agent"
+                                            
+                                            com.assetvault.network.SupabaseManager.submitTicket(
+                                                context = requireContext(),
+                                                issue = issue,
+                                                imageUri = null,
+                                                userEmail = email,
+                                                userName = name,
+                                                raisedByGemini = true
+                                            )
                                         }
                                     }
                                     else -> {

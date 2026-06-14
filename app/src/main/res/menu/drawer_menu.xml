@@ -5,54 +5,63 @@
         <item
             android:id="@+id/nav_profile"
             android:icon="@android:drawable/ic_menu_info_details"
-            android:title="Profile" />
+            android:title="@string/menu_profile" />
         <item
             android:id="@+id/nav_protected_assets"
             android:icon="@android:drawable/ic_secure"
-            android:title="Protected Assets" />
+            android:title="@string/menu_protected_assets" />
         <item
             android:id="@+id/nav_sightings_map"
             android:icon="@android:drawable/ic_dialog_map"
-            android:title="Sightings Map" />
+            android:title="@string/menu_sightings_map" />
         <item
             android:id="@+id/nav_transfer_ownership"
             android:icon="@android:drawable/ic_menu_send"
             app:actionLayout="@layout/menu_dot_badge"
-            android:title="Transfer Ownership" />
+            android:title="@string/menu_transfer_ownership" />
         <item
             android:id="@+id/nav_request_ownership"
             android:icon="@android:drawable/ic_menu_add"
-            android:title="Request Ownership" />
+            android:title="@string/menu_request_ownership" />
     </group>
     
-    <item android:title="Help &amp; Support">
+    <item android:title="@string/menu_group_help">
         <menu>
             <item
                 android:id="@+id/nav_gemini_history"
                 android:icon="@android:drawable/ic_menu_recent_history"
-                android:title="Chat History" />
+                android:title="@string/menu_chat_history" />
             <item
                 android:id="@+id/nav_raise_ticket"
                 android:icon="@android:drawable/ic_menu_help"
-                android:title="Raise Ticket" />
+                android:title="@string/menu_raise_ticket" />
         </menu>
     </item>
     
-    <item android:title="Wallet &amp; Crypto">
+    <item android:title="@string/menu_group_wallet">
         <menu>
             <item
                 android:id="@+id/nav_balance"
                 android:icon="@android:drawable/ic_menu_info_details"
-                android:title="Wallet Balance" />
+                android:title="@string/menu_wallet_balance" />
         </menu>
     </item>
 
-    <item android:title="Account">
+    <item android:title="@string/menu_group_account">
         <menu>
+            <item
+                android:id="@+id/nav_language"
+                android:icon="@android:drawable/ic_menu_sort_alphabetically"
+                android:title="@string/menu_change_language" />
+            <item
+                android:id="@+id/nav_admin"
+                android:icon="@android:drawable/ic_menu_manage"
+                android:title="@string/menu_admin_panel"
+                android:visible="false" />
             <item
                 android:id="@+id/nav_signout"
                 android:icon="@android:drawable/ic_lock_power_off"
-                android:title="Sign Out" />
+                android:title="@string/menu_sign_out" />
         </menu>
     </item>
 </menu>
