@@ -209,17 +209,6 @@ class MapFragment : Fragment() {
         binding.mapView.overlays.add(circle)
         binding.mapView.overlays.add(marker)
         binding.mapView.invalidate()
-        
-        // Push local sighting to global map
-        viewLifecycleOwner.lifecycleScope.launch {
-            val sighting = com.assetvault.network.AssetSighting(
-                asset_id = "local-device",
-                lat = lat,
-                lng = lng,
-                accuracy_meters = accuracyMeters
-            )
-            com.assetvault.network.SupabaseManager.pushSighting(sighting)
-        }
     }
 
     override fun onResume() {

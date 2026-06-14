@@ -147,12 +147,34 @@ class AssetPickerFragment : Fragment() {
 
                 Log.d(TAG, "Generated pHash: $pHash")
 
-                // Step 2: Get device info for search
+                // Step 2: Get device info and location for search
                 val deviceHash = Settings.Secure.getString(
                     requireContext().contentResolver,
                     Settings.Secure.ANDROID_ID
                 ) ?: "unknown"
                 val ownerId = prefs.getOwnerId()
+
+                var currentLat = 0.0
+                var currentLng = 0.0
+                var accuracy = 0.0
+                
+                try {
+                    val locationManager = requireContext().getSystemService(android.content.Context.LOCATION_SERVICE) as android.location.LocationManager
+                    if (androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_FINE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED ||
+                        androidx.core.content.ContextCompat.checkSelfPermission(requireContext(), android.Manifest.permission.ACCESS_COARSE_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        
+                        val location = locationManager.getLastKnownLocation(android.location.LocationManager.NETWORK_PROVIDER) 
+                            ?: locationManager.getLastKnownLocation(android.location.LocationManager.GPS_PROVIDER)
+                            
+                        if (location != null) {
+                            currentLat = location.latitude
+                            currentLng = location.longitude
+                            accuracy = location.accuracy.toDouble()
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to get location", e)
+                }
 
                 // Step 3: Search cloud for existing match
                 withContext(Dispatchers.Main) {
@@ -163,8 +185,8 @@ class AssetPickerFragment : Fragment() {
                     phash = pHash,
                     deviceHash = deviceHash,
                     locationName = "Unknown",
-                    lat = 0.0,
-                    lng = 0.0
+                    lat = currentLat,
+                    lng = currentLng
                 )
 
                 if (searchResult.matchFound) {
@@ -204,6 +226,17 @@ class AssetPickerFragment : Fragment() {
 
                         // Use the original pHash that was registered on the blockchain
                         val matchedHash = searchResult.matchedPhash ?: pHash
+
+                        // Push Sighting to Supabase if location is available
+                        if (currentLat != 0.0 && currentLng != 0.0) {
+                            val sighting = com.assetvault.network.AssetSighting(
+                                asset_id = matchedHash,
+                                lat = currentLat,
+                                lng = currentLng,
+                                accuracy_meters = accuracy
+                            )
+                            com.assetvault.network.SupabaseManager.pushSighting(sighting)
+                        }
 
                         val entity = SignatureEntity(
                             uri = uri.toString(),
