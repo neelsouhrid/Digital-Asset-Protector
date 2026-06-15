@@ -43,6 +43,17 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <CheckBox
+        android:id="@+id/cbIsAiGenerated"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Is this content AI generated?"
+        android:textColor="@color/text_primary"
+        app:layout_constraintTop_toBottomOf="@id/tvDescription"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnSelectAsset"
         android:layout_width="wrap_content"
@@ -50,7 +61,7 @@
         android:layout_marginTop="32dp"
         android:text="@string/select_file"
         app:icon="@drawable/ic_folder"
-        app:layout_constraintTop_toBottomOf="@id/tvDescription"
+        app:layout_constraintTop_toBottomOf="@id/cbIsAiGenerated"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 

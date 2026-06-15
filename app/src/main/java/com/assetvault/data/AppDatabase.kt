@@ -15,7 +15,7 @@ import com.assetvault.data.chat.ChatSessionEntity
  */
 @Database(
     entities = [SignatureEntity::class, ChatSessionEntity::class, ChatMessageEntity::class],
-    version = 4,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

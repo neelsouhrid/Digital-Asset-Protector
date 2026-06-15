@@ -104,26 +104,27 @@ class VaultFragment : Fragment() {
     private suspend fun syncFromCloud(db: AppDatabase, currentUser: String) {
         try {
             val email = SecurePreferences.getInstance(requireContext()).getGoogleEmail() ?: return
-            val cloudAssets = SupabaseManager.fetchUserAssets(email)
+            val cloudAssets = SupabaseManager.fetchUserAndProtectedAssets(email)
 
             if (cloudAssets.isNotEmpty()) {
                 Log.d(TAG, "Found ${cloudAssets.size} cloud assets. Syncing to local DB...")
-                for (record in cloudAssets) {
+                for ((baseAsset, protectedAsset) in cloudAssets) {
                     // Check if already exists locally
-                    val existing = db.signatureDao().getByPHash(record.hash)
+                    val existing = db.signatureDao().getByPHash(baseAsset.hash)
                     if (existing == null) {
                         val entity = SignatureEntity(
-                            uri = record.storage_path ?: "",
+                            uri = baseAsset.storage_path ?: "content://collaborative_asset",
                             hexVector = "",
-                            pHash = record.hash,
+                            pHash = baseAsset.hash,
                             timestamp = System.currentTimeMillis(),
-                            blockchainTxId = record.blockchain_tx,
-                            status = if (record.status == "leaked") "SIGHTING" else "PROTECTED",
+                            blockchainTxId = baseAsset.blockchain_tx,
+                            status = if (baseAsset.status == "leaked") "SIGHTING" else "PROTECTED",
                             ownerEmail = currentUser,
-                            isEnforced = record.is_enforced
+                            isEnforced = baseAsset.is_enforced,
+                            isAiGenerated = false
                         )
                         db.signatureDao().insert(entity)
-                        Log.d(TAG, "Synced cloud asset: ${record.hash.take(16)}...")
+                        Log.d(TAG, "Synced cloud asset: ${baseAsset.hash.take(16)}...")
                     }
                 }
             } else {

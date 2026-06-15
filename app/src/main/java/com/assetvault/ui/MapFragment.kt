@@ -1,9 +1,12 @@
 package com.assetvault.ui
 
 import android.Manifest
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.telephony.CellInfoLte
@@ -25,6 +28,9 @@ import org.osmdroid.views.overlay.Polygon
 class MapFragment : Fragment() {
     private var _binding: FragmentMapBinding? = null
     private val binding get() = _binding!!
+
+    /** Sightings loaded for the current owner, kept so they survive user-location updates */
+    private var pendingSightings: List<com.assetvault.network.AssetSighting> = emptyList()
 
     // Runtime permission launcher - requests both READ_PHONE_STATE + ACCESS_FINE_LOCATION
     // Android requires ACCESS_FINE_LOCATION to read cell data, AND requires global location to be ON.
@@ -56,23 +62,24 @@ class MapFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         setupMap()
         checkAndRequestPermissions()
-        fetchAndPlotGlobalSightings()
+        fetchAndPlotOwnerSightings()
     }
 
-    private fun fetchAndPlotGlobalSightings() {
+    /**
+     * Fetches sightings that belong ONLY to the current owner's assets
+     * and plots them as RED markers. Non-owners see nothing here.
+     */
+    private fun fetchAndPlotOwnerSightings() {
         viewLifecycleOwner.lifecycleScope.launch {
-            val sightings = com.assetvault.network.SupabaseManager.fetchSightings()
-            withContext(kotlinx.coroutines.Dispatchers.Main) {
-                sightings.forEach { sighting ->
-                    val point = GeoPoint(sighting.lat, sighting.lng)
-                    val marker = Marker(binding.mapView)
-                    marker.position = point
-                    marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                    marker.title = "Sighting: ${sighting.asset_id}"
-                    marker.icon = ContextCompat.getDrawable(requireContext(), org.osmdroid.library.R.drawable.marker_default) // Standard marker
-                    binding.mapView.overlays.add(marker)
-                }
-                binding.mapView.invalidate()
+            val email = com.assetvault.data.SecurePreferences.getInstance(requireContext()).getGoogleEmail()
+                ?: return@launch
+            val sightings = withContext(Dispatchers.IO) {
+                com.assetvault.network.SupabaseManager.fetchSightingsForOwner(email)
+            }
+            withContext(Dispatchers.Main) {
+                // Store sightings so we can re-draw them after user location is plotted
+                pendingSightings = sightings
+                drawSightingMarkers()
             }
         }
     }
@@ -191,24 +198,65 @@ class MapFragment : Fragment() {
         binding.mapView.controller.setZoom(14.0)
         binding.mapView.controller.setCenter(point)
 
-        // Add a marker
+        // Green marker for the current user's location
         val marker = Marker(binding.mapView)
         marker.position = point
         marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-        marker.title = "Approximate Location (Cell Triangulation)"
+        marker.title = "Your Location (Cell Triangulation)"
         marker.snippet = "Accuracy: ±${accuracyMeters.toInt()}m"
+        marker.icon = createColoredMarkerIcon(Color.parseColor("#2E7D32")) // dark green
 
-        // Add accuracy circle
+        // Accuracy circle in green
         val circle = Polygon()
         circle.points = Polygon.pointsAsCircle(point, accuracyMeters)
-        circle.fillColor = 0x226200EE  // transparent purple
-        circle.strokeColor = 0xFF6200EE.toInt()
+        circle.fillColor = 0x222E7D32
+        circle.strokeColor = 0xFF2E7D32.toInt()
         circle.strokeWidth = 2f
 
         binding.mapView.overlays.clear()
         binding.mapView.overlays.add(circle)
         binding.mapView.overlays.add(marker)
+
+        // Re-draw sighting markers on top
+        drawSightingMarkers()
+
         binding.mapView.invalidate()
+    }
+
+    /** Draws all owner sightings as RED markers on the map */
+    private fun drawSightingMarkers() {
+        pendingSightings.forEach { sighting ->
+            val point = GeoPoint(sighting.lat, sighting.lng)
+            val marker = Marker(binding.mapView)
+            marker.position = point
+            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
+            val shortHash = sighting.asset_id.take(12)
+            marker.title = "🚨 Sighting Detected"
+            marker.snippet = "Asset: $shortHash..."
+            marker.icon = createColoredMarkerIcon(Color.parseColor("#D32F2F")) // dark red
+            binding.mapView.overlays.add(marker)
+        }
+        binding.mapView.invalidate()
+    }
+
+    /** Creates a simple solid-color circle drawable to use as a map marker icon */
+    private fun createColoredMarkerIcon(color: Int): android.graphics.drawable.Drawable {
+        val size = (36 * resources.displayMetrics.density).toInt()
+        val bitmap = android.graphics.Bitmap.createBitmap(size, size, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(bitmap)
+        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+        }
+        val radius = size / 2f
+        canvas.drawCircle(radius, radius, radius, paint)
+        // White border
+        val borderPaint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = Color.WHITE
+            style = android.graphics.Paint.Style.STROKE
+            strokeWidth = 4f
+        }
+        canvas.drawCircle(radius, radius, radius - 2f, borderPaint)
+        return android.graphics.drawable.BitmapDrawable(resources, bitmap)
     }
 
     override fun onResume() {

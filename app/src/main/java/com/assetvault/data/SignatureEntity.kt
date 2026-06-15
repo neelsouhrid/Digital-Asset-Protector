@@ -20,5 +20,6 @@ data class SignatureEntity(
     var status: String,           // "PENDING", "PROTECTED", "SIGHTING"
     var similarity: Float? = null,    // Match % for sightings
     var ownerEmail: String? = null,   // Google account email of the owner
-    var isEnforced: Boolean = false   // True = owner activated protection, blur on sighting devices
+    var isEnforced: Boolean = false,  // True = owner activated protection, blur on sighting devices
+    var isAiGenerated: Boolean = false // True = flagged as AI generated
 )

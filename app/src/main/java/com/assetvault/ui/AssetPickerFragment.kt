@@ -12,13 +12,18 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
-import com.assetvault.ai.PHashGenerator
+import com.assetvault.R
+import com.assetvault.BuildConfig
 import com.assetvault.data.AppDatabase
 import com.assetvault.data.SecurePreferences
 import com.assetvault.data.SignatureEntity
 import com.assetvault.databinding.FragmentAssetPickerBinding
 import com.assetvault.network.BlockchainManager
 import com.assetvault.network.CloudApiClient
+import com.assetvault.ai.PHashGenerator
+import com.google.ai.client.generativeai.GenerativeModel
+import com.google.ai.client.generativeai.type.content
+import android.graphics.BitmapFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -70,8 +75,8 @@ class AssetPickerFragment : Fragment() {
     }
 
     private fun launchFilePicker() {
-        // Open any image file with persistable permission
-        pickDocument.launch(arrayOf("image/*"))
+        // Open any image or video file with persistable permission
+        pickDocument.launch(arrayOf("image/*", "video/*"))
     }
 
     private fun handleSelectedUri(uri: Uri) {
@@ -95,6 +100,32 @@ class AssetPickerFragment : Fragment() {
 
         // Run the full Task 4 registration flow
         processAssetWithRegistration(uri)
+    }
+
+    private fun getBytesFromUri(uri: Uri): ByteArray? {
+        val mimeType = requireContext().contentResolver.getType(uri)
+        if (mimeType?.startsWith("video/") == true) {
+            val retriever = android.media.MediaMetadataRetriever()
+            try {
+                retriever.setDataSource(requireContext(), uri)
+                // Get frame at 1 second (1000000 microseconds)
+                val bitmap = retriever.getFrameAtTime(1000000, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC) 
+                    ?: retriever.getFrameAtTime(0, android.media.MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                
+                if (bitmap != null) {
+                    val stream = java.io.ByteArrayOutputStream()
+                    bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, stream)
+                    return stream.toByteArray()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to extract video frame", e)
+            } finally {
+                retriever.release()
+            }
+        } else {
+            return requireContext().contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        }
+        return null
     }
 
     /**
@@ -132,7 +163,7 @@ class AssetPickerFragment : Fragment() {
                 }
 
                 val bytes = withContext(Dispatchers.IO) {
-                    requireContext().contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    getBytesFromUri(uri)
                 }
 
                 if (bytes == null || bytes.isEmpty()) {
@@ -146,6 +177,33 @@ class AssetPickerFragment : Fragment() {
                 }
 
                 Log.d(TAG, "Generated pHash: $pHash")
+
+                // Check AI generation
+                val userFlaggedAi = binding.cbIsAiGenerated.isChecked
+                var isAiGenerated = userFlaggedAi
+
+                if (!isAiGenerated) {
+                    try {
+                        val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                        if (bitmap != null) {
+                            val model = GenerativeModel(
+                                modelName = "gemini-2.5-flash",
+                                apiKey = BuildConfig.GEMINI_API_KEY
+                            )
+                            val response = model.generateContent(
+                                content {
+                                    image(bitmap)
+                                    text("Is this image/video frame AI generated? Reply with only YES or NO.")
+                                }
+                            )
+                            if (response.text?.contains("YES", ignoreCase = true) == true) {
+                                isAiGenerated = true
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "AI detection failed", e)
+                    }
+                }
 
                 // Step 2: Get device info and location for search
                 val deviceHash = Settings.Secure.getString(
@@ -208,7 +266,8 @@ class AssetPickerFragment : Fragment() {
                             blockchainTxId = searchResult.ownerBlockchainTx,
                             status = "PROTECTED",
                             isEnforced = enforcement.isEnforced,
-                            ownerEmail = ownerId
+                            ownerEmail = ownerId,
+                            isAiGenerated = isAiGenerated
                         )
                         db.signatureDao().insert(entity)
 
@@ -232,8 +291,7 @@ class AssetPickerFragment : Fragment() {
                             val sighting = com.assetvault.network.AssetSighting(
                                 asset_id = matchedHash,
                                 lat = currentLat,
-                                lng = currentLng,
-                                accuracy_meters = accuracy
+                                lng = currentLng
                             )
                             com.assetvault.network.SupabaseManager.pushSighting(sighting)
                         }
@@ -247,7 +305,8 @@ class AssetPickerFragment : Fragment() {
                             status = "SIGHTING",
                             similarity = searchResult.similarity.toFloat(),
                             ownerEmail = ownerId,
-                            isEnforced = searchResult.isEnforced
+                            isEnforced = searchResult.isEnforced,
+                            isAiGenerated = isAiGenerated
                         )
                         db.signatureDao().insert(entity)
 
@@ -285,7 +344,8 @@ class AssetPickerFragment : Fragment() {
                         timestamp = System.currentTimeMillis(),
                         blockchainTxId = txHash,
                         status = "PROTECTED",
-                        ownerEmail = ownerId
+                        ownerEmail = ownerId,
+                        isAiGenerated = isAiGenerated
                     )
                     db.signatureDao().insert(entity)
 

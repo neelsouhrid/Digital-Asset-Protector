@@ -1,90 +1,120 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/background"
-    android:padding="24dp">
+    android:background="@color/black">
 
-    <ImageButton
-        android:id="@+id/btnBack"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:src="@drawable/ic_back"
-        android:contentDescription="@string/back"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+    <!-- Media Container (Full Screen) -->
+    <FrameLayout
+        android:id="@+id/mediaContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginBottom="60dp">
 
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="wrap_content"
+        <ImageView
+            android:id="@+id/ivPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="fitCenter"
+            android:src="@drawable/ic_image_placeholder"
+            android:contentDescription="@string/thumbnail" />
+
+        <VideoView
+            android:id="@+id/videoView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+
+        <!-- Blur overlay -->
+        <LinearLayout
+            android:id="@+id/layoutBlurOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#CC000000"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔒"
+                android:textSize="48sp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/protected_by_owner"
+                android:textColor="@color/white"
+                android:textSize="16sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <!-- Back Button (Floating on Top) -->
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_margin="16dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_back"
+            app:tint="@color/white"
+            android:contentDescription="@string/back" />
+    </FrameLayout>
+
+    <!-- Bottom Sheet -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/bottomSheet"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/asset_details"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="@color/text_primary"
-        app:layout_constraintTop_toTopOf="@id/btnBack"
-        app:layout_constraintBottom_toBottomOf="@id/btnBack"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <ScrollView
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_marginTop="16dp"
-        app:layout_constraintTop_toBottomOf="@id/btnBack"
-        app:layout_constraintBottom_toTopOf="@id/actionButtonsContainer"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
+        android:background="@drawable/bottom_sheet_bg"
+        android:padding="24dp"
+        app:behavior_hideable="false"
+        app:behavior_peekHeight="90dp"
+        app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
+        android:elevation="16dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
+            
+            <!-- Handle -->
+            <View
+                android:layout_width="40dp"
+                android:layout_height="4dp"
+                android:layout_gravity="center_horizontal"
+                android:background="#DDDDDD"
+                android:layout_marginBottom="16dp" />
 
-            <!-- Image preview with blur support -->
-            <FrameLayout
+            <!-- Title & Share Button -->
+            <RelativeLayout
                 android:layout_width="match_parent"
-                android:layout_height="240dp"
+                android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp">
+                <TextView
+                    android:id="@+id/tvTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:layout_centerVertical="true"
+                    android:text="@string/asset_details"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
+                    
+                <ImageButton
+                    android:id="@+id/btnShareLink"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true"
+                    android:background="?attr/selectableItemBackgroundBorderless"
+                    android:src="@android:drawable/ic_menu_share" />
+            </RelativeLayout>
 
-                <ImageView
-                    android:id="@+id/ivPreview"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:scaleType="centerCrop"
-                    android:src="@drawable/ic_image_placeholder"
-                    android:contentDescription="@string/thumbnail" />
-
-                <!-- Blur overlay: shown when enforcement is active on sightings -->
-                <LinearLayout
-                    android:id="@+id/layoutBlurOverlay"
-                    android:layout_width="match_parent"
-                    android:layout_height="match_parent"
-                    android:background="#CC000000"
-                    android:gravity="center"
-                    android:orientation="vertical"
-                    android:visibility="gone">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="🔒"
-                        android:textSize="48sp" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/protected_by_owner"
-                        android:textColor="@color/white"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-
-                </LinearLayout>
-            </FrameLayout>
-
+            <!-- Metadata -->
             <TextView
                 android:id="@+id/tvAssetUri"
                 android:layout_width="match_parent"
@@ -146,79 +176,102 @@
                 android:textStyle="bold"
                 android:visibility="gone" />
 
+            <TextView
+                android:id="@+id/tvAiTag"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="🤖 AI Generated Content"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="#E91E63"
+                android:visibility="gone" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="Registered Owners"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary" />
+
+            <TextView
+                android:id="@+id/tvOwnersList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="16dp"
+                android:textSize="14sp"
+                android:textColor="@color/text_secondary"
+                android:text="Loading..." />
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:id="@+id/actionButtonsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="16dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:weightSum="2">
+
+                    <!-- Protect Asset button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnProtect"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginEnd="4dp"
+                        android:text="@string/protect_asset"
+                        app:icon="@drawable/ic_lock" />
+
+                    <!-- Verify -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnVerify"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="4dp"
+                        android:text="@string/verify"
+                        style="@style/Widget.Material3.Button.OutlinedButton" />
+                </LinearLayout>
+
+                <!-- Transfer Ownership Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTransferOwnership"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/transfer_ownership"
+                    android:visibility="gone"
+                    app:icon="@android:drawable/ic_menu_send"
+                    app:backgroundTint="@color/purple_700"/>
+
+                <!-- Generate DMCA Template Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnDmca"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/generate_dmca"
+                    android:visibility="gone"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    app:icon="@android:drawable/ic_menu_share"/>
+
+            </LinearLayout>
         </LinearLayout>
-
-    </ScrollView>
-
+    </androidx.core.widget.NestedScrollView>
+    
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
-    <!-- Action Buttons -->
-    <LinearLayout
-        android:id="@+id/actionButtonsContainer"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:weightSum="2">
-
-            <!-- Protect Asset button (for owners) -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnProtect"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="@string/protect_asset"
-                app:icon="@drawable/ic_lock" />
-
-            <!-- Verify -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnVerify"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="@string/verify"
-                style="@style/Widget.Material3.Button.OutlinedButton" />
-        </LinearLayout>
-
-        <!-- Transfer Ownership Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnTransferOwnership"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/transfer_ownership"
-            android:visibility="gone"
-            app:icon="@android:drawable/ic_menu_send"
-            app:backgroundTint="@color/purple_700"/>
-
-        <!-- Generate DMCA Template Button -->
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnDmca"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/generate_dmca"
-            android:visibility="gone"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            app:icon="@android:drawable/ic_menu_share"/>
-
-    </LinearLayout>
-
-</androidx.constraintlayout.widget.ConstraintLayout>
+        android:layout_gravity="center" />
+        
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

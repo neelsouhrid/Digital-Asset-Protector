@@ -1,5 +1,8 @@
 package com.assetvault.ui
 
+import android.graphics.Bitmap
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.DiffUtil
@@ -15,6 +18,7 @@ import kotlinx.coroutines.withContext
 
 /**
  * RecyclerView adapter for displaying protected assets in VaultFragment.
+ * Handles images, videos, and cloud-synced collaborative assets (which have no local URI).
  * Blurs thumbnails for enforced sightings.
  */
 class AssetListAdapter(
@@ -63,31 +67,82 @@ class AssetListAdapter(
                 }
             }
 
-            // Thumbnail: blur if this is an enforced sighting
-            if (asset.status == "SIGHTING" && asset.isEnforced) {
-                // Load blurred thumbnail on background thread
-                CoroutineScope(Dispatchers.Default).launch {
-                    val bitmap = ImageBlurUtil.loadScaledBitmap(
-                        binding.root.context, asset.uri, 100
-                    )
-                    if (bitmap != null) {
-                        val blurred = ImageBlurUtil.blurBitmap(bitmap, 15)
-                        withContext(Dispatchers.Main) {
-                            binding.ivThumbnail.setImageBitmap(blurred)
+            // Reset to placeholder before async load to avoid stale images on recycled views
+            binding.ivThumbnail.setImageResource(com.assetvault.R.drawable.ic_image_placeholder)
+
+            // Determine if the URI is a valid local resource we can load
+            val isPlaceholderUri = asset.uri.isBlank() ||
+                    asset.uri == "content://collaborative_asset" ||
+                    asset.uri.startsWith("content://collaborative")
+
+            if (isPlaceholderUri) {
+                // Cloud-synced asset with no local file — show a generic icon
+                binding.ivThumbnail.setImageResource(com.assetvault.R.drawable.ic_image_placeholder)
+                return
+            }
+
+            // Load thumbnail on a background thread
+            CoroutineScope(Dispatchers.Default).launch {
+                val thumbnail: Bitmap? = tryLoadThumbnail(asset)
+                withContext(Dispatchers.Main) {
+                    if (thumbnail != null) {
+                        val final = if (asset.status == "SIGHTING" && asset.isEnforced) {
+                            ImageBlurUtil.blurBitmap(thumbnail, 15)
+                        } else {
+                            thumbnail
                         }
+                        binding.ivThumbnail.setImageBitmap(final)
                     }
-                }
-            } else {
-                // Normal thumbnail
-                try {
-                    binding.ivThumbnail.setImageURI(android.net.Uri.parse(asset.uri))
-                } catch (e: Exception) {
-                    // Keep placeholder on error
+                    // If null, placeholder from the reset above stays shown
                 }
             }
 
             binding.root.setOnClickListener {
                 onItemClick(asset)
+            }
+        }
+
+        /**
+         * Tries to load a thumbnail bitmap for the asset.
+         * - For images: uses ImageBlurUtil.loadScaledBitmap
+         * - For videos: uses MediaMetadataRetriever to grab a frame at 1s
+         * Returns null on any failure so the placeholder remains.
+         */
+        private fun tryLoadThumbnail(asset: SignatureEntity): Bitmap? {
+            val context = binding.root.context
+            val uri = Uri.parse(asset.uri)
+
+            // Detect video by MIME type or extension
+            val mimeType = try {
+                context.contentResolver.getType(uri)
+            } catch (e: Exception) { null }
+
+            val isVideo = mimeType?.startsWith("video/") == true ||
+                    asset.uri.endsWith(".mp4", true) ||
+                    asset.uri.endsWith(".mov", true) ||
+                    asset.uri.endsWith(".mkv", true)
+
+            return if (isVideo) {
+                extractVideoThumbnail(asset.uri)
+            } else {
+                try {
+                    ImageBlurUtil.loadScaledBitmap(context, asset.uri, 100)
+                } catch (e: Exception) {
+                    null
+                }
+            }
+        }
+
+        /** Extracts the first frame of a video at ~1 second as a thumbnail */
+        private fun extractVideoThumbnail(uriString: String): Bitmap? {
+            val retriever = MediaMetadataRetriever()
+            return try {
+                retriever.setDataSource(binding.root.context, Uri.parse(uriString))
+                retriever.getFrameAtTime(1_000_000L) // 1 second in microseconds
+            } catch (e: Exception) {
+                null
+            } finally {
+                try { retriever.release() } catch (_: Exception) {}
             }
         }
 

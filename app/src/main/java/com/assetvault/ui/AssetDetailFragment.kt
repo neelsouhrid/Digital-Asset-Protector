@@ -76,7 +76,9 @@ class AssetDetailFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.btnBack.setOnClickListener {
-            parentFragmentManager.popBackStack()
+            // When hosted in AssetPagerFragment's ViewPager, parentFragmentManager is the child
+            // fragment manager of the pager. We need to pop the activity's back stack to exit.
+            requireActivity().supportFragmentManager.popBackStack()
         }
 
         binding.btnProtect.setOnClickListener {
@@ -101,6 +103,19 @@ class AssetDetailFragment : Fragment() {
             val clipboard = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("pHash", pHash))
             Toast.makeText(requireContext(), "pHash copied to clipboard!", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnShareLink.setOnClickListener {
+            val pHashText = binding.tvPHash.text.toString()
+            if (pHashText.startsWith("pHash: ")) {
+                val pHash = pHashText.removePrefix("pHash: ")
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, "Check out my digital asset!")
+                    putExtra(Intent.EXTRA_TEXT, "View my registered digital asset here:\nhttps://assetvault.com/asset/$pHash")
+                }
+                startActivity(Intent.createChooser(shareIntent, "Share Asset Link via"))
+            }
         }
 
         loadAssetDetails()
@@ -130,31 +145,83 @@ class AssetDetailFragment : Fragment() {
                 }
             }
 
-            // Load image preview
-            withContext(Dispatchers.Default) {
-                val bitmap = ImageBlurUtil.loadScaledBitmap(requireContext(), asset.uri)
-                if (bitmap != null) {
-                    withContext(Dispatchers.Main) {
-                        if (asset.status == "SIGHTING" && asset.isEnforced) {
-                            val blurred = ImageBlurUtil.blurBitmap(bitmap, 25)
-                            binding.ivPreview.setImageBitmap(blurred)
-                            binding.layoutBlurOverlay.visibility = View.VISIBLE
-                        } else {
-                            binding.ivPreview.setImageBitmap(bitmap)
-                            binding.layoutBlurOverlay.visibility = View.GONE
-                        }
+            // Media Preview Load
+            val isPlaceholderUri = asset.uri.isBlank() ||
+                    asset.uri == "content://collaborative_asset" ||
+                    asset.uri.startsWith("content://collaborative")
+
+            if (isPlaceholderUri) {
+                withContext(Dispatchers.Main) {
+                    binding.ivPreview.visibility = View.VISIBLE
+                    binding.videoView.visibility = View.GONE
+                    binding.layoutBlurOverlay.visibility = View.GONE
+                    binding.ivPreview.setImageResource(com.assetvault.R.drawable.ic_image_placeholder)
+                    
+                    // Fill info fields
+                    binding.tvAssetUri.text = "File: Cloud Synced Asset"
+                    binding.tvHexVector.text = "Vector: ${asset.hexVector.take(32)}..."
+                    binding.tvPHash.text = "pHash: ${asset.pHash}"
+                    binding.tvTimestamp.text = "Added: ${formatTimestamp(asset.timestamp)}"
+
+                    binding.tvAiTag.visibility = if (asset.isAiGenerated) View.VISIBLE else View.GONE
+                }
+                return@launch
+            }
+
+            val uri = android.net.Uri.parse(asset.uri)
+            val mimeType = try { requireContext().contentResolver.getType(uri) } catch (e: Exception) { null } ?: "image/*"
+            val isVideo = mimeType.startsWith("video/") || asset.uri.endsWith(".mp4", true)
+
+            withContext(Dispatchers.Main) {
+                if (isVideo) {
+                    binding.ivPreview.visibility = View.GONE
+                    binding.videoView.visibility = View.VISIBLE
+                    val mediaController = android.widget.MediaController(requireContext())
+                    mediaController.setAnchorView(binding.videoView)
+                    binding.videoView.setMediaController(mediaController)
+                    binding.videoView.setVideoURI(uri)
+
+                    if (asset.status == "SIGHTING" && asset.isEnforced) {
+                        binding.layoutBlurOverlay.visibility = View.VISIBLE
+                        // Cannot play enforced sightings
+                        binding.videoView.setMediaController(null)
+                    } else {
+                        binding.layoutBlurOverlay.visibility = View.GONE
+                        binding.videoView.requestFocus()
                     }
                 } else {
-                    withContext(Dispatchers.Main) {
-                        try {
-                            binding.ivPreview.setImageURI(android.net.Uri.parse(asset.uri))
+                    binding.videoView.visibility = View.GONE
+                    binding.ivPreview.visibility = View.VISIBLE
+                }
+            }
+
+            if (!isVideo) {
+                // Load image preview
+                withContext(Dispatchers.Default) {
+                    val bitmap = ImageBlurUtil.loadScaledBitmap(requireContext(), asset.uri)
+                    if (bitmap != null) {
+                        withContext(Dispatchers.Main) {
                             if (asset.status == "SIGHTING" && asset.isEnforced) {
+                                val blurred = ImageBlurUtil.blurBitmap(bitmap, 25)
+                                binding.ivPreview.setImageBitmap(blurred)
                                 binding.layoutBlurOverlay.visibility = View.VISIBLE
                             } else {
+                                binding.ivPreview.setImageBitmap(bitmap)
                                 binding.layoutBlurOverlay.visibility = View.GONE
                             }
-                        } catch (e: Exception) {
-                            android.util.Log.e("AssetDetailFragment", "Fallback setImageURI failed", e)
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            try {
+                                binding.ivPreview.setImageURI(uri)
+                                if (asset.status == "SIGHTING" && asset.isEnforced) {
+                                    binding.layoutBlurOverlay.visibility = View.VISIBLE
+                                } else {
+                                    binding.layoutBlurOverlay.visibility = View.GONE
+                                }
+                            } catch (e: Exception) {
+                                android.util.Log.e("AssetDetailFragment", "Fallback setImageURI failed", e)
+                            }
                         }
                     }
                 }
@@ -165,6 +232,20 @@ class AssetDetailFragment : Fragment() {
             binding.tvHexVector.text = "Vector: ${asset.hexVector.take(32)}..."
             binding.tvPHash.text = "pHash: ${asset.pHash}"
             binding.tvTimestamp.text = "Added: ${formatTimestamp(asset.timestamp)}"
+
+            binding.tvAiTag.visibility = if (asset.isAiGenerated) View.VISIBLE else View.GONE
+
+            // Fetch owners list
+            launch(Dispatchers.IO) {
+                val owners = SupabaseManager.fetchAssetOwners(asset.pHash)
+                withContext(Dispatchers.Main) {
+                    if (owners.isNotEmpty()) {
+                        binding.tvOwnersList.text = owners.joinToString("\n")
+                    } else {
+                        binding.tvOwnersList.text = "No owners found."
+                    }
+                }
+            }
 
             // Status badge
             when (asset.status) {

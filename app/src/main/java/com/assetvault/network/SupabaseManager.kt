@@ -12,6 +12,7 @@ import io.github.jan.supabase.storage.storage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import java.util.UUID
 
 @Serializable
@@ -29,10 +30,9 @@ data class SupportTicket(
 
 @Serializable
 data class AssetSighting(
-    val asset_id: String,
-    val lat: Double,
-    val lng: Double,
-    val accuracy_meters: Double
+    @SerialName("matched_phash") val asset_id: String,
+    @SerialName("location_lat") val lat: Double,
+    @SerialName("location_lng") val lng: Double
 )
 
 @Serializable
@@ -124,6 +124,52 @@ object SupabaseManager {
         }
     }
 
+    /**
+     * Fetches only sightings that belong to assets owned (primary or collaborative) by [email].
+     * This is used to show red sighting markers on the owner's map only.
+     */
+    suspend fun fetchSightingsForOwner(email: String): List<AssetSighting> {
+        return withContext(Dispatchers.IO) {
+            try {
+                if (!isConfigured()) return@withContext emptyList()
+
+                // 1. Collect all pHashes owned by this user (primary assets)
+                val ownedHashes = mutableSetOf<String>()
+                try {
+                    val primaryAssets = client.postgrest["assets"]
+                        .select { filter { eq("app_email", email) } }
+                        .decodeList<SupabaseAssetRecord>()
+                    ownedHashes.addAll(primaryAssets.map { it.hash })
+                } catch (e: Exception) {
+                    Log.e(TAG, "fetchSightingsForOwner primary fetch error: ${e.message}", e)
+                }
+
+                // 2. Also include pHashes where this user is a collaborative owner
+                try {
+                    val collabAssets = client.postgrest["protected_assets"]
+                        .select { filter { eq("owner_id", email) } }
+                        .decodeList<ProtectedAssetRecord>()
+                    ownedHashes.addAll(collabAssets.map { it.phash })
+                } catch (e: Exception) {
+                    Log.e(TAG, "fetchSightingsForOwner collab fetch error: ${e.message}", e)
+                }
+
+                if (ownedHashes.isEmpty()) return@withContext emptyList()
+
+                // 3. Fetch all sightings and filter to only those matching owned pHashes
+                val allSightings = client.postgrest["sightings"]
+                    .select()
+                    .decodeList<AssetSighting>()
+
+                allSightings.filter { it.asset_id in ownedHashes }
+            } catch (e: Exception) {
+                Log.e(TAG, "fetchSightingsForOwner error: ${e.message}", e)
+                emptyList()
+            }
+        }
+    }
+
+
     suspend fun pushSighting(sighting: AssetSighting): Boolean {
         return withContext(Dispatchers.IO) {
             try {
@@ -182,6 +228,44 @@ object SupabaseManager {
         }
     }
 
+    suspend fun fetchUserAndProtectedAssets(email: String): List<Pair<SupabaseAssetRecord, ProtectedAssetRecord?>> {
+        return withContext(Dispatchers.IO) {
+            val userAssets = fetchUserAssets(email).map { it to null as ProtectedAssetRecord? }.toMutableList()
+            val protectedAssets = fetchProtectedAssets(email)
+            for (p in protectedAssets) {
+                val baseAsset = fetchAssetByHash(p.phash)
+                if (baseAsset != null) {
+                    // Check if not already added
+                    if (userAssets.none { it.first.hash == baseAsset.hash }) {
+                        userAssets.add(baseAsset to p)
+                    }
+                }
+            }
+            userAssets
+        }
+    }
+
+    suspend fun fetchAssetOwners(pHash: String): List<String> {
+        return withContext(Dispatchers.IO) {
+            val owners = mutableSetOf<String>()
+            val baseAsset = fetchAssetByHash(pHash)
+            if (baseAsset?.app_email != null) {
+                owners.add(baseAsset.app_email)
+            }
+            try {
+                if (isConfigured()) {
+                    val pAssets = client.postgrest["protected_assets"]
+                        .select { filter { eq("phash", pHash) } }
+                        .decodeList<ProtectedAssetRecord>()
+                    owners.addAll(pAssets.map { it.owner_id })
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "fetchAssetOwners error: ${e.message}", e)
+            }
+            owners.toList()
+        }
+    }
+
     // ── Tickets ─────────────────────────────────────────────────────────
 
     suspend fun submitTicket(
@@ -207,7 +291,7 @@ object SupabaseManager {
                 }
 
                 val ticket = SupportTicket(
-                    user_id = userEmail,
+                    user_id = null, // DB expects UUID, not email
                     user_email = userEmail,
                     user_name = userName,
                     description = issue,

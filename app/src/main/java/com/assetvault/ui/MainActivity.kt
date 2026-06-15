@@ -147,8 +147,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-
-
+        binding.ivProfile.setOnClickListener {
+            navigateToProfile()
+        }
         // Nav Header
         val navHeader = binding.navigationView.getHeaderView(0)
         val navHeaderName = navHeader.findViewById<TextView>(R.id.navHeaderName)
@@ -425,7 +426,7 @@ class MainActivity : AppCompatActivity() {
 
     fun navigateToAssetDetail(assetId: Long) {
         supportFragmentManager.commit {
-            replace(R.id.fragmentContainer, AssetDetailFragment.newInstance(assetId))
+            replace(R.id.fragmentContainer, AssetPagerFragment.newInstance(assetId))
             addToBackStack("detail")
         }
     }
